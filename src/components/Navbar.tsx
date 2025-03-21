@@ -20,6 +20,11 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Close mobile menu when changing routes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -67,6 +72,16 @@ const Navbar = () => {
             }`}
           >
             Features
+          </Link>
+          <Link
+            to="/contact"
+            className={`text-sm font-medium transition-colors ${
+              isActive("/contact")
+                ? "text-primary"
+                : "text-foreground/80 hover:text-foreground"
+            }`}
+          >
+            Contact
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/login">
@@ -125,6 +140,15 @@ const Navbar = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Features
+              </Link>
+              <Link
+                to="/contact"
+                className={`text-xl font-medium transition-colors ${
+                  isActive("/contact") ? "text-primary" : "text-foreground/80"
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Contact
               </Link>
               <div className="flex flex-col gap-4 mt-6">
                 <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
