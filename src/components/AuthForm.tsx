@@ -20,6 +20,8 @@ interface AuthFormProps {
   type: AuthType;
 }
 
+const API_URL = "http://localhost:5000/api";
+
 const AuthForm = ({ type }: AuthFormProps) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -33,31 +35,58 @@ const AuthForm = ({ type }: AuthFormProps) => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       if (type === "login") {
-        // Handle login
-        console.log("Logging in with:", { email, password, role });
+        // Handle login with actual API
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password, role }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Login failed");
+        }
+
+        // Save token and user data to localStorage
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        
         toast.success("Successfully logged in");
         
         // Redirect based on role
-        if (role === "admin") {
+        if (data.user.role === "admin") {
           navigate("/admin/dashboard");
-        } else if (role === "staff") {
+        } else if (data.user.role === "staff") {
           navigate("/staff/dashboard");
         } else {
           navigate("/student/dashboard");
         }
       } else {
-        // Handle registration
-        console.log("Registering with:", { name, email, password, role });
+        // Handle registration with actual API
+        const response = await fetch(`${API_URL}/auth/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, email, password, role }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Registration failed");
+        }
+
         toast.success("Successfully registered");
         navigate("/login");
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      toast.error("Authentication failed. Please try again.");
+      toast.error(`Authentication failed: ${error instanceof Error ? error.message : "Please try again"}`);
     } finally {
       setIsLoading(false);
     }
