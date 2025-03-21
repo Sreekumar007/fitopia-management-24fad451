@@ -1,69 +1,108 @@
-# Welcome to your Lovable project
 
-## Project info
+# FitWell Gym Management System
 
-**URL**: https://lovable.dev/projects/aec672ef-95f7-4cf0-a346-8746853161f8
+A full-stack web application for managing a gym with different user roles (student, staff, admin) and features.
 
-## How can I edit this code?
+## Project Overview
 
-There are several ways of editing your application.
+This project consists of:
+- **Frontend**: React-based UI with Typescript, Tailwind CSS, and shadcn/ui components
+- **Backend**: Flask API with MySQL database integration
 
-**Use Lovable**
+## Quick Start
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/aec672ef-95f7-4cf0-a346-8746853161f8) and start prompting.
+### Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 16+ and npm
+- Python 3.8+
+- MySQL Server
 
-**Use your preferred IDE**
+### Running the Backend
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. **Set up MySQL Database**
+   ```sql
+   CREATE DATABASE gym_management;
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. **Configure Backend**
+   ```bash
+   cd backend
+   # Optional: Create virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   
+   # Install dependencies
+   pip install -r requirements.txt
+   
+   # Configure .env file with your database credentials
+   # Edit the .env file to match your MySQL setup
+   ```
 
-Follow these steps:
+3. **Start the Backend Server**
+   ```bash
+   python app.py
+   ```
+   The backend will run at http://localhost:5000
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Running the Frontend
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Install Dependencies**
+   ```bash
+   # In the project root directory
+   npm install
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. **Start the Development Server**
+   ```bash
+   npm run dev
+   ```
+   The frontend will run at http://localhost:8080 (or another port if 8080 is in use)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## Features
+
+- **Authentication System**: Register and login with role-based access
+- **Student Features**: Profile management, training videos, diet plans, equipment listings
+- **Staff Features**: Trainer profile, video management, diet plan creation, student management
+- **Admin Features**: User management, equipment inventory, statistics dashboard
+
+## Project Structure
+
+```
+.
+├── backend/               # Flask API
+│   ├── models.py          # Database models
+│   ├── routes/            # API endpoints
+│   ├── app.py             # Main application entry
+│   └── ...
+├── src/                   # Frontend React code
+│   ├── components/        # UI components
+│   ├── pages/             # Page components
+│   └── ...
+└── ...
 ```
 
-**Edit a file directly in GitHub**
+## API Documentation
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for detailed API endpoints.
 
-**Use GitHub Codespaces**
+## User Guide
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+See [USER_GUIDE.md](./USER_GUIDE.md) for detailed usage instructions.
 
-## What technologies are used for this project?
+## Development
 
-This project is built with .
+### Backend Development
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Models are defined in `backend/models.py`
+- Routes are organized in blueprint modules in the `backend/routes/` directory
+- Database configuration is in `backend/app.py` and `.env`
 
-## How can I deploy this project?
+### Frontend Development
 
-Simply open [Lovable](https://lovable.dev/projects/aec672ef-95f7-4cf0-a346-8746853161f8) and click on Share -> Publish.
+- Pages are in `src/pages/`
+- Components are in `src/components/`
+- Authentication logic is handled in `src/components/AuthForm.tsx`
 
-## I want to use a custom domain - is that possible?
+## License
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is licensed under the MIT License - see the LICENSE file for details.
