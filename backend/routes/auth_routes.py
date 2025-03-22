@@ -2,29 +2,12 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, get_jwt_identity
 from database import db
-from models import User, Equipment, DietPlan, TrainingVideo, StudentProfile
+from models import User, Equipment, DietPlan, TrainingVideo
 from datetime import timedelta
 from middleware.auth_middleware import jwt_required_custom
 import traceback
 
 auth_bp = Blueprint('auth', __name__)
-
-# Create default admin user if it doesn't exist
-@auth_bp.route('/create-default-admin', methods=['GET'])
-def create_default_admin():
-    admin = User.query.filter_by(email="admin@fitwell.com").first()
-    if not admin:
-        default_admin = User(
-            name="Admin",
-            email="admin@fitwell.com",
-            role="admin"
-        )
-        default_admin.set_password("admin")
-        
-        db.session.add(default_admin)
-        db.session.commit()
-        return jsonify({'message': 'Default admin created successfully'}), 201
-    return jsonify({'message': 'Default admin already exists'}), 200
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -37,10 +20,6 @@ def register():
     # Check if email already exists
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already registered'}), 409
-    
-    # Validate role
-    if data['role'] not in ['student', 'staff', 'admin']:
-        return jsonify({'error': 'Invalid role'}), 400
     
     # Create new user
     new_user = User(
@@ -60,22 +39,28 @@ def login():
     try:
         data = request.get_json()
         
-        if not all(k in data for k in ['email', 'password']):
-            return jsonify({'error': 'Missing email or password'}), 400
+        # Simple validation
+        email = data.get('email')
+        password = data.get('password')
         
-        user = User.query.filter_by(email=data['email']).first()
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        # Find user
+        user = User.query.filter_by(email=email).first()
         
         if not user:
             return jsonify({'error': 'User not found'}), 401
             
-        if not user.check_password(data['password']):
+        if not user.check_password(password):
             return jsonify({'error': 'Invalid password'}), 401
         
-        # If role was provided, check if it matches
-        if 'role' in data and data['role'] and user.role != data['role']:
-            return jsonify({'error': f'This account is not registered as a {data["role"]}'}), 401
+        # Check role if provided
+        role = data.get('role')
+        if role and user.role != role:
+            return jsonify({'error': f'This account is not registered as a {role}'}), 401
         
-        # Create access token with role included
+        # Create access token
         access_token = create_access_token(
             identity={
                 'id': user.id,
@@ -106,21 +91,8 @@ def get_profile():
     try:
         current_user = get_jwt_identity()
         
-        if not current_user or 'id' not in current_user:
-            return jsonify({'error': 'Invalid token payload'}), 401
-            
-        user_id = current_user['id']
-        user = User.query.get(user_id)
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        return jsonify({
-            'id': user.id,
-            'name': user.name,
-            'email': user.email,
-            'role': user.role
-        }), 200
+        # Just return the user info from the token
+        return jsonify(current_user), 200
     except Exception as e:
         print(f"Profile error: {str(e)}")
         traceback.print_exc()

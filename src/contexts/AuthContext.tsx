@@ -143,26 +143,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await fetch(`${API_URL}/auth/profile`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Authorization": `Bearer ${token}`
         },
       });
-
-      console.log("Auth check response:", response.status);
 
       if (!response.ok) {
         throw new Error("Authentication failed");
       }
 
-      const userData = await response.json();
-      setUser(userData);
+      // Just use existing user data
       return true;
     } catch (error) {
       console.error("Auth check error:", error);
-      // Only clear auth if it's an auth error (not a network error)
-      if (error instanceof Error && error.message === "Authentication failed") {
-        logout();
-      }
+      logout();
       return false;
     }
   };
