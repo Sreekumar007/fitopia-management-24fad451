@@ -13,8 +13,8 @@ const API_URL = "http://localhost:5000/api";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
+  const [email, setEmail] = React.useState("admin@fitwell.com");
+  const [password, setPassword] = React.useState("admin");
   const [isLoading, setIsLoading] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {

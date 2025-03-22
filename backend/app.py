@@ -9,6 +9,7 @@ from routes.auth_routes import auth_bp
 from routes.student_routes import student_bp
 from routes.staff_routes import staff_bp
 from routes.admin_routes import admin_bp
+from models import User
 
 # Load environment variables
 load_dotenv()
@@ -35,7 +36,26 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 def index():
     return {'message': 'Gym Management API is running'}
 
+# Create default admin user
+def create_default_admin():
+    with app.app_context():
+        admin = User.query.filter_by(email="admin@fitwell.com").first()
+        if not admin:
+            default_admin = User(
+                name="Admin",
+                email="admin@fitwell.com",
+                role="admin"
+            )
+            default_admin.set_password("admin")
+            
+            db.session.add(default_admin)
+            db.session.commit()
+            print("Default admin created successfully")
+        else:
+            print("Default admin already exists")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Create tables based on models
+        create_default_admin()  # Create default admin user
     app.run(debug=True, port=5000)
