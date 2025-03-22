@@ -62,7 +62,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password, role }),
-        credentials: "include"
       });
 
       const data = await response.json();
@@ -142,8 +141,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await fetch(`${API_URL}/auth/profile`, {
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
       });
 

@@ -1,9 +1,10 @@
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, get_jwt_identity
 from database import db
 from models import User, Equipment, DietPlan, TrainingVideo, StudentProfile
 from datetime import timedelta
+from middleware.auth_middleware import jwt_required_custom
 import traceback
 
 auth_bp = Blueprint('auth', __name__)
@@ -100,7 +101,7 @@ def login():
         return jsonify({'error': f'Login failed: {str(e)}'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])
-@jwt_required()
+@jwt_required_custom
 def get_profile():
     try:
         current_user = get_jwt_identity()
@@ -127,7 +128,7 @@ def get_profile():
 
 # Equipment routes
 @auth_bp.route('/equipment', methods=['GET'])
-@jwt_required()
+@jwt_required_custom
 def get_equipment():
     equipment = Equipment.query.all()
     
@@ -147,7 +148,7 @@ def get_equipment():
 
 # Diet plans routes
 @auth_bp.route('/diet-plans', methods=['GET'])
-@jwt_required()
+@jwt_required_custom
 def get_diet_plans():
     diet_plans = DietPlan.query.all()
     
@@ -169,7 +170,7 @@ def get_diet_plans():
 
 # Training videos routes
 @auth_bp.route('/training-videos', methods=['GET'])
-@jwt_required()
+@jwt_required_custom
 def get_training_videos():
     videos = TrainingVideo.query.all()
     

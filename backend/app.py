@@ -15,7 +15,7 @@ from models import User
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
@@ -88,9 +88,28 @@ def create_test_student():
         else:
             print("Test student already exists")
 
+# Create test staff account for demo purposes
+def create_test_staff():
+    with app.app_context():
+        staff = User.query.filter_by(email="staff@fitwell.com").first()
+        if not staff:
+            test_staff = User(
+                name="Test Staff",
+                email="staff@fitwell.com",
+                role="staff"
+            )
+            test_staff.set_password("staff")
+            
+            db.session.add(test_staff)
+            db.session.commit()
+            print("Test staff created successfully")
+        else:
+            print("Test staff already exists")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Create tables based on models
         create_default_admin()  # Create default admin user
         create_test_student()  # Create test student user
+        create_test_staff()  # Create test staff user
     app.run(debug=True, port=5000)

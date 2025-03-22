@@ -63,3 +63,20 @@ def student_required(fn):
             traceback.print_exc()
             return jsonify({'error': 'Authentication failed'}), 401
     return wrapper
+
+def jwt_required_custom(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            verify_jwt_in_request()
+            current_user = get_jwt_identity()
+            
+            if not current_user or 'id' not in current_user:
+                return jsonify({'error': 'Invalid token payload'}), 401
+                
+            return fn(*args, **kwargs)
+        except Exception as e:
+            print(f"JWT middleware error: {str(e)}")
+            traceback.print_exc()
+            return jsonify({'error': 'Authentication failed'}), 401
+    return wrapper
