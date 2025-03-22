@@ -38,7 +38,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse stored user data:", e);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
     }
     
     setIsLoading(false);
@@ -48,15 +54,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     
     try {
+      console.log("Attempting login with:", { email, role });
+      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password, role }),
+        credentials: "include"
       });
 
       const data = await response.json();
+      
+      console.log("Login response:", response.status, data);
 
       if (!response.ok) {
         throw new Error(data.error || "Login failed");
@@ -136,6 +147,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         },
       });
 
+      console.log("Auth check response:", response.status);
+
       if (!response.ok) {
         throw new Error("Authentication failed");
       }
@@ -145,7 +158,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
     } catch (error) {
       console.error("Auth check error:", error);
-      logout();
+      // Only clear auth if it's an auth error (not a network error)
+      if (error instanceof Error && error.message === "Authentication failed") {
+        logout();
+      }
       return false;
     }
   };

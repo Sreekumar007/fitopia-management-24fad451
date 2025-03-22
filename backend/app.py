@@ -1,5 +1,5 @@
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
@@ -15,16 +15,32 @@ from models import User
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+app.config['JWT_HEADER_NAME'] = 'Authorization'
+app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
 # Initialize extensions
 db.init_app(app)
 jwt = JWTManager(app)
+
+# Add error handlers
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({'error': 'Token has expired'}), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({'error': 'Invalid token'}), 401
+
+@jwt.unauthorized_loader
+def unauthorized_callback(error):
+    return jsonify({'error': 'Authorization required'}), 401
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -54,8 +70,27 @@ def create_default_admin():
         else:
             print("Default admin already exists")
 
+# Create test student account for demo purposes
+def create_test_student():
+    with app.app_context():
+        student = User.query.filter_by(email="student@fitwell.com").first()
+        if not student:
+            test_student = User(
+                name="Test Student",
+                email="student@fitwell.com",
+                role="student"
+            )
+            test_student.set_password("student")
+            
+            db.session.add(test_student)
+            db.session.commit()
+            print("Test student created successfully")
+        else:
+            print("Test student already exists")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Create tables based on models
         create_default_admin()  # Create default admin user
+        create_test_student()  # Create test student user
     app.run(debug=True, port=5000)

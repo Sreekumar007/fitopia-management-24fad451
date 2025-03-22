@@ -25,6 +25,14 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("student");
 
+  // For demo purposes, prefill with test student credentials
+  const fillTestCredentials = () => {
+    setEmail("student@fitwell.com");
+    setPassword("student");
+    setRole("student");
+    toast.info("Test student credentials filled");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -108,6 +116,17 @@ const Login = () => {
                   <span>Login</span>
                 )}
               </Button>
+              
+              <div className="text-center">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="text-xs text-primary"
+                  onClick={fillTestCredentials}
+                >
+                  Use test account
+                </Button>
+              </div>
               
               <div className="text-center text-sm mt-4">
                 <p className="text-muted-foreground">
