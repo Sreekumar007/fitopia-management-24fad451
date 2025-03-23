@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
 
-type UserRole = "student" | "staff";
+type UserRole = "student" | "staff" | "trainer" | "admin";
 
 const Login = () => {
   const { login, isLoading } = useAuth();
@@ -26,11 +26,28 @@ const Login = () => {
   const [role, setRole] = useState<UserRole>("student");
 
   // For demo purposes, prefill with test student credentials
-  const fillTestCredentials = () => {
-    setEmail("student@fitwell.com");
-    setPassword("student");
-    setRole("student");
-    toast.info("Test student credentials filled");
+  const fillTestCredentials = (roleType: UserRole) => {
+    if (roleType === "student") {
+      setEmail("student@fitwell.com");
+      setPassword("student");
+      setRole("student");
+      toast.info("Test student credentials filled");
+    } else if (roleType === "staff") {
+      setEmail("staff@fitwell.com");
+      setPassword("staff");
+      setRole("staff");
+      toast.info("Test staff credentials filled");
+    } else if (roleType === "trainer") {
+      setEmail("trainer@fitwell.com");
+      setPassword("trainer");
+      setRole("trainer");
+      toast.info("Test trainer credentials filled");
+    } else if (roleType === "admin") {
+      setEmail("admin@fitwell.com");
+      setPassword("admin");
+      setRole("admin");
+      toast.info("Test admin credentials filled");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,7 +115,9 @@ const Login = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="staff">College Staff</SelectItem>
+                    <SelectItem value="trainer">Trainer</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -117,24 +136,43 @@ const Login = () => {
                 )}
               </Button>
               
-              <div className="text-center">
+              <div className="text-center flex flex-wrap gap-2 justify-center">
                 <Button 
                   type="button" 
-                  variant="ghost" 
-                  className="text-xs text-primary"
-                  onClick={fillTestCredentials}
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fillTestCredentials("student")}
                 >
-                  Use test account
+                  Student Demo
                 </Button>
-              </div>
-              
-              <div className="text-center text-sm mt-4">
-                <p className="text-muted-foreground">
-                  Are you an administrator?{" "}
-                  <Link to="/admin/login" className="text-primary font-medium hover:underline">
-                    Admin Login
-                  </Link>
-                </p>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fillTestCredentials("staff")}
+                >
+                  Staff Demo
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fillTestCredentials("trainer")}
+                >
+                  Trainer Demo
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fillTestCredentials("admin")}
+                >
+                  Admin Demo
+                </Button>
               </div>
             </form>
             

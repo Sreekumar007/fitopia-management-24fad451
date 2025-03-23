@@ -8,8 +8,15 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'admin', 'staff', 'student'
+    role = db.Column(db.String(20), nullable=False)  # 'admin', 'staff', 'student', 'trainer'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # New fields
+    gender = db.Column(db.String(20), nullable=True)
+    blood_group = db.Column(db.String(10), nullable=True)
+    height = db.Column(db.Float, nullable=True)  # in cm
+    weight = db.Column(db.Float, nullable=True)  # in kg
+    payment_method = db.Column(db.String(50), nullable=True)
     
     # Relationships
     student_profile = db.relationship('StudentProfile', backref='user', uselist=False, cascade='all, delete-orphan')
@@ -24,11 +31,18 @@ class StudentProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     age = db.Column(db.Integer, nullable=True)
-    height = db.Column(db.Float, nullable=True)  # in cm
-    weight = db.Column(db.Float, nullable=True)  # in kg
     fitness_goal = db.Column(db.String(100), nullable=True)
     medical_conditions = db.Column(db.Text, nullable=True)
     admission_date = db.Column(db.DateTime, default=datetime.utcnow)
+    department = db.Column(db.String(100), nullable=True)
+    attendance = db.relationship('Attendance', backref='student', lazy=True)
+
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student_profile.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False)  # 'present', 'absent'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class TrainingVideo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -72,3 +86,24 @@ class Trainer(db.Model):
     schedule = db.Column(db.Text, nullable=True)  # JSON string of weekly schedule
     
     user = db.relationship('User', backref='trainer_profile')
+
+class WorkoutPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_workout_plans')
+    assignee = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_workout_plans')
+
+class MedicalRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    record_type = db.Column(db.String(50), nullable=False)  # 'injury', 'medical condition'
+    description = db.Column(db.Text, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='medical_records')

@@ -11,28 +11,38 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    
-    # Check if required fields exist
-    if not all(k in data for k in ['name', 'email', 'password', 'role']):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Check if email already exists
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Email already registered'}), 409
-    
-    # Create new user
-    new_user = User(
-        name=data['name'],
-        email=data['email'],
-        role=data['role']
-    )
-    new_user.set_password(data['password'])
-    
-    db.session.add(new_user)
-    db.session.commit()
-    
-    return jsonify({'message': 'User registered successfully'}), 201
+    try:
+        data = request.get_json()
+        
+        # Check if required fields exist
+        if not all(k in data for k in ['name', 'email', 'password', 'role']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Check if email already exists
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email already registered'}), 409
+        
+        # Create new user
+        new_user = User(
+            name=data['name'],
+            email=data['email'],
+            role=data['role'],
+            gender=data.get('gender', ''),
+            blood_group=data.get('blood_group', ''),
+            height=data.get('height'),
+            weight=data.get('weight'),
+            payment_method=data.get('payment_method', '')
+        )
+        new_user.set_password(data['password'])
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({'message': 'User registered successfully'}), 201
+    except Exception as e:
+        print(f"Registration error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': f'Registration failed: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -77,7 +87,11 @@ def login():
                 'id': user.id,
                 'name': user.name,
                 'email': user.email,
-                'role': user.role
+                'role': user.role,
+                'gender': user.gender,
+                'blood_group': user.blood_group,
+                'height': user.height,
+                'weight': user.weight
             }
         }), 200
     except Exception as e:
@@ -91,8 +105,23 @@ def get_profile():
     try:
         current_user = get_jwt_identity()
         
-        # Just return the user info from the token
-        return jsonify(current_user), 200
+        # Get full user information
+        user = User.query.get(current_user['id'])
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+            
+        # Return user info with additional fields
+        return jsonify({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role,
+            'gender': user.gender,
+            'blood_group': user.blood_group,
+            'height': user.height,
+            'weight': user.weight,
+            'payment_method': user.payment_method
+        }), 200
     except Exception as e:
         print(f"Profile error: {str(e)}")
         traceback.print_exc()

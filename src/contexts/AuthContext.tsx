@@ -7,7 +7,12 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: "student" | "staff" | "admin";
+  role: "student" | "staff" | "admin" | "trainer";
+  gender?: string;
+  blood_group?: string;
+  height?: number;
+  weight?: number;
+  payment_method?: string;
 }
 
 interface AuthContextType {
@@ -16,7 +21,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string, role: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: string) => Promise<void>;
+  register: (
+    name: string, 
+    email: string, 
+    password: string, 
+    role: string,
+    gender?: string,
+    bloodGroup?: string,
+    height?: number,
+    weight?: number,
+    paymentMethod?: string
+  ) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
 }
@@ -84,6 +99,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Redirect based on role
       if (data.user.role === "admin") {
         navigate("/admin/dashboard");
+      } else if (data.user.role === "trainer") {
+        navigate("/trainer/dashboard");
       } else if (data.user.role === "staff") {
         navigate("/staff/dashboard");
       } else {
@@ -98,7 +115,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: string) => {
+  const register = async (
+    name: string, 
+    email: string, 
+    password: string, 
+    role: string,
+    gender?: string,
+    bloodGroup?: string,
+    height?: number,
+    weight?: number,
+    paymentMethod?: string
+  ) => {
     setIsLoading(true);
     
     try {
@@ -107,7 +134,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ 
+          name, 
+          email, 
+          password, 
+          role,
+          gender,
+          blood_group: bloodGroup,
+          height,
+          weight,
+          payment_method: paymentMethod
+        }),
       });
 
       const data = await response.json();
@@ -151,7 +188,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error("Authentication failed");
       }
 
-      // Just use existing user data
+      const data = await response.json();
+      
+      // Update user data with latest from server
+      setUser(data);
+      localStorage.setItem("user", JSON.stringify(data));
+      
       return true;
     } catch (error) {
       console.error("Auth check error:", error);

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Register = () => {
   const { register: registerUser, isLoading } = useAuth();
@@ -22,15 +23,37 @@ const Register = () => {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState("student");
+  
+  // New fields
+  const [gender, setGender] = React.useState("");
+  const [bloodGroup, setBloodGroup] = React.useState("");
+  const [height, setHeight] = React.useState("");
+  const [weight, setWeight] = React.useState("");
+  const [paymentMethod, setPaymentMethod] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      await registerUser(name, email, password, role);
+      // Convert height and weight to numbers
+      const heightNum = height ? parseFloat(height) : undefined;
+      const weightNum = weight ? parseFloat(weight) : undefined;
+      
+      await registerUser(
+        name, 
+        email, 
+        password, 
+        role, 
+        gender, 
+        bloodGroup, 
+        heightNum, 
+        weightNum, 
+        paymentMethod
+      );
     } catch (error) {
       // Error is already handled in the register function
       console.error("Registration submission error:", error);
+      toast.error("Registration failed. Please try again.");
     }
   };
 
@@ -43,8 +66,8 @@ const Register = () => {
       
       <Navbar />
       
-      <main className="flex-grow flex items-center justify-center py-16">
-        <div className="w-full max-w-md px-4">
+      <main className="flex-grow py-12">
+        <div className="w-full max-w-2xl px-4 mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Join FitWell Gym</h1>
             <p className="text-muted-foreground">
@@ -54,58 +77,129 @@ const Register = () => {
           
           <div className="bg-card border rounded-xl p-8 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your full name"
-                  required
-                  className="w-full"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  className="w-full"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  className="w-full"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={setRole} disabled>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Note: Staff and admin accounts can only be created by administrators
-                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="staff">College Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Note: Trainer and admin accounts can only be created by administrators
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bloodGroup">Blood Group</Label>
+                  <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your blood group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A+">A+</SelectItem>
+                      <SelectItem value="A-">A-</SelectItem>
+                      <SelectItem value="B+">B+</SelectItem>
+                      <SelectItem value="B-">B-</SelectItem>
+                      <SelectItem value="AB+">AB+</SelectItem>
+                      <SelectItem value="AB-">AB-</SelectItem>
+                      <SelectItem value="O+">O+</SelectItem>
+                      <SelectItem value="O-">O-</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="height">Height (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
+                    placeholder="Enter your height"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="Enter your weight"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="paymentMethod">Payment Method</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Credit Card">Credit Card</SelectItem>
+                      <SelectItem value="Debit Card">Debit Card</SelectItem>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="UPI">UPI</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

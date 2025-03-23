@@ -5,12 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ("student" | "staff" | "admin")[];
+  allowedRoles?: ("student" | "staff" | "admin" | "trainer")[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  allowedRoles = ["student", "staff", "admin"] 
+  allowedRoles = ["student", "staff", "admin", "trainer"] 
 }) => {
   const { user, token, checkAuth, isLoading } = useAuth();
   const location = useLocation();
@@ -44,6 +44,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // Redirect based on role if not authorized
     if (user.role === "admin") {
       return <Navigate to="/admin/dashboard" replace />;
+    } else if (user.role === "trainer") {
+      return <Navigate to="/trainer/dashboard" replace />;
     } else if (user.role === "staff") {
       return <Navigate to="/staff/dashboard" replace />;
     } else {

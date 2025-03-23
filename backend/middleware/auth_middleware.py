@@ -2,7 +2,6 @@
 from flask import request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from functools import wraps
-import traceback
 
 def admin_required(fn):
     @wraps(fn)
@@ -17,6 +16,22 @@ def admin_required(fn):
             return fn(*args, **kwargs)
         except Exception as e:
             print(f"Admin middleware error: {str(e)}")
+            return jsonify({'error': 'Authentication failed'}), 401
+    return wrapper
+
+def trainer_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            verify_jwt_in_request()
+            current_user = get_jwt_identity()
+            
+            if current_user['role'] != 'trainer' and current_user['role'] != 'admin':
+                return jsonify({'error': 'Trainer access required'}), 403
+                
+            return fn(*args, **kwargs)
+        except Exception as e:
+            print(f"Trainer middleware error: {str(e)}")
             return jsonify({'error': 'Authentication failed'}), 401
     return wrapper
 
@@ -57,7 +72,6 @@ def jwt_required_custom(fn):
     def wrapper(*args, **kwargs):
         try:
             verify_jwt_in_request()
-            current_user = get_jwt_identity()
             return fn(*args, **kwargs)
         except Exception as e:
             print(f"JWT middleware error: {str(e)}")
