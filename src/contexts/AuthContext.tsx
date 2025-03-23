@@ -36,7 +36,57 @@ interface AuthContextType {
   checkAuth: () => Promise<boolean>;
 }
 
-const API_URL = "http://localhost:5000/api";
+// Mock users for demo (normally this would come from the backend)
+const MOCK_USERS = [
+  {
+    id: 1,
+    name: "Test Student",
+    email: "student@fitwell.com",
+    password: "student",
+    role: "student",
+    gender: "Male",
+    blood_group: "O+",
+    height: 175,
+    weight: 70,
+    payment_method: "Credit Card"
+  },
+  {
+    id: 2,
+    name: "Test Staff",
+    email: "staff@fitwell.com",
+    password: "staff",
+    role: "staff",
+    gender: "Female",
+    blood_group: "A+",
+    height: 165,
+    weight: 60,
+    payment_method: "Bank Transfer"
+  },
+  {
+    id: 3,
+    name: "Test Trainer",
+    email: "trainer@fitwell.com",
+    password: "trainer",
+    role: "trainer",
+    gender: "Male",
+    blood_group: "B+",
+    height: 180,
+    weight: 75,
+    payment_method: "Direct Debit"
+  },
+  {
+    id: 4,
+    name: "Admin",
+    email: "admin@fitwell.com",
+    password: "admin",
+    role: "admin",
+    gender: "Non-binary",
+    blood_group: "AB+",
+    height: 170,
+    weight: 65,
+    payment_method: "Cash"
+  }
+];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -71,37 +121,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log("Attempting login with:", { email, role });
       
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, role }),
-      });
-
-      const data = await response.json();
+      // Instead of API call, use local mock data
+      const foundUser = MOCK_USERS.find(user => 
+        user.email === email && 
+        user.password === password && 
+        (!role || user.role === role)
+      );
       
-      console.log("Login response:", response.status, data);
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+      if (!foundUser) {
+        throw new Error("Invalid email or password");
       }
-
-      // Save token and user data
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
       
-      setToken(data.access_token);
-      setUser(data.user);
+      // Create a user object without the password
+      const { password: _, ...userWithoutPassword } = foundUser;
+      
+      // Create a fake token (just for demo)
+      const fakeToken = `demo-token-${Date.now()}-${foundUser.role}`;
+      
+      // Save token and user data
+      localStorage.setItem("token", fakeToken);
+      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
+      
+      setToken(fakeToken);
+      setUser(userWithoutPassword);
       
       toast.success("Successfully logged in");
       
       // Redirect based on role
-      if (data.user.role === "admin") {
+      if (foundUser.role === "admin") {
         navigate("/admin/dashboard");
-      } else if (data.user.role === "trainer") {
+      } else if (foundUser.role === "trainer") {
         navigate("/trainer/dashboard");
-      } else if (data.user.role === "staff") {
+      } else if (foundUser.role === "staff") {
         navigate("/staff/dashboard");
       } else {
         navigate("/student/dashboard");
@@ -129,30 +180,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          name, 
-          email, 
-          password, 
-          role,
-          gender,
-          blood_group: bloodGroup,
-          height,
-          weight,
-          payment_method: paymentMethod
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
+      // Check if email already exists
+      if (MOCK_USERS.some(user => user.email === email)) {
+        throw new Error("Email already registered");
       }
-
+      
+      // Create a new user (in a real app, this would be sent to the server)
+      const newUser = {
+        id: MOCK_USERS.length + 1,
+        name,
+        email,
+        password,
+        role: role as "student" | "staff" | "admin" | "trainer",
+        gender,
+        blood_group: bloodGroup,
+        height,
+        weight,
+        payment_method: paymentMethod
+      };
+      
+      // In a real app, we would add this user to the database
+      // For demo, we'll just show a success message
       toast.success("Registration successful! Please log in.");
       navigate("/login");
     } catch (error) {
@@ -177,23 +225,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!token) return false;
     
     try {
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Authentication failed");
-      }
-
-      const data = await response.json();
-      
-      // Update user data with latest from server
-      setUser(data);
-      localStorage.setItem("user", JSON.stringify(data));
-      
+      // In a real app, we would verify the token with the server
+      // For demo purposes, we'll just consider having a token as being authenticated
       return true;
     } catch (error) {
       console.error("Auth check error:", error);
