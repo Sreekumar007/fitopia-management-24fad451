@@ -21,34 +21,50 @@ import {
   Dumbbell, 
   UserCog, 
   Settings, 
-  LogOut 
+  LogOut,
+  BookUser,
+  Coins,
+  CalendarCheck,
+  ListChecks
 } from "lucide-react";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet";
 import UserManagement from "@/components/admin/UserManagement";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface DashboardStats {
+// Mock data for the admin dashboard
+const mockStats = {
   users: {
-    total: number;
-    students: number;
-    staff: number;
-    admins: number;
-  };
-  equipment: number;
-}
-
-const API_URL = "http://localhost:5000/api";
+    total: 842,
+    students: 620,
+    staff: 178,
+    admins: 4,
+    activeMembers: 345,
+    registeredMembers: 798
+  },
+  trainers: {
+    total: 28,
+    active: 24
+  },
+  equipment: 75,
+  earnings: {
+    total: 125000,
+    monthly: 12500,
+    yearly: 125000
+  },
+  attendance: {
+    today: 125,
+    week: 875,
+    month: 3450
+  }
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState(mockStats);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Get token from localStorage
-  const token = localStorage.getItem("token");
-  const userString = localStorage.getItem("user");
-  const user = userString ? JSON.parse(userString) : null;
   
   useEffect(() => {
     // Check if user is admin
@@ -58,36 +74,17 @@ const AdminDashboard = () => {
       return;
     }
 
-    fetchDashboardStats();
+    // Simulate API call
+    const timer = setTimeout(() => {
+      setStats(mockStats);
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [navigate, user]);
   
-  const fetchDashboardStats = async () => {
-    try {
-      const response = await fetch(`${API_URL}/admin/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard statistics");
-      }
-      
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      toast.error("Failed to load dashboard statistics");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    toast.success("Logged out successfully");
-    navigate("/");
+    logout();
   };
   
   return (
@@ -120,11 +117,20 @@ const AdminDashboard = () => {
           
           <Button 
             variant="ghost" 
-            className={`w-full justify-start ${activeTab === "users" ? "bg-primary/10 text-primary" : ""}`}
-            onClick={() => setActiveTab("users")}
+            className={`w-full justify-start ${activeTab === "members" ? "bg-primary/10 text-primary" : ""}`}
+            onClick={() => setActiveTab("members")}
           >
             <Users className="mr-2 h-5 w-5" />
-            User Management
+            Member Management
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${activeTab === "trainers" ? "bg-primary/10 text-primary" : ""}`}
+            onClick={() => setActiveTab("trainers")}
+          >
+            <UserCog className="mr-2 h-5 w-5" />
+            Trainer Management
           </Button>
           
           <Button 
@@ -138,11 +144,11 @@ const AdminDashboard = () => {
           
           <Button 
             variant="ghost" 
-            className={`w-full justify-start ${activeTab === "trainers" ? "bg-primary/10 text-primary" : ""}`}
-            onClick={() => setActiveTab("trainers")}
+            className={`w-full justify-start ${activeTab === "attendance" ? "bg-primary/10 text-primary" : ""}`}
+            onClick={() => setActiveTab("attendance")}
           >
-            <UserCog className="mr-2 h-5 w-5" />
-            Trainers
+            <CalendarCheck className="mr-2 h-5 w-5" />
+            Attendance
           </Button>
         </nav>
         
@@ -172,16 +178,17 @@ const AdminDashboard = () => {
         <header className="mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage your gym, staff, and students
+            Manage your gym, staff, and members
           </p>
         </header>
         
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 md:w-[600px]">
+          <TabsList className="grid grid-cols-5 md:w-[600px]">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="equipment">Equipment</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="trainers">Trainers</TabsTrigger>
+            <TabsTrigger value="equipment">Equipment</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
@@ -191,55 +198,212 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                    <CardHeader className="pb-2 bg-blue-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <Users className="mr-2 h-5 w-5 text-blue-500" />
+                        Members
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.users.total || 0}</div>
-                      <p className="text-xs text-muted-foreground">Combined students, staff, and admins</p>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Total Members</span>
+                          <span className="font-bold">{stats.users.total}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Active Members</span>
+                          <span className="font-bold text-green-600">{stats.users.activeMembers}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Registered Members</span>
+                          <span className="font-bold">{stats.users.registeredMembers}</span>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                   
                   <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Students</CardTitle>
+                    <CardHeader className="pb-2 bg-purple-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <BookUser className="mr-2 h-5 w-5 text-purple-500" />
+                        User Categories
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.users.students || 0}</div>
-                      <p className="text-xs text-muted-foreground">Registered gym members</p>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Students</span>
+                          <span className="font-bold">{stats.users.students}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">College Staff</span>
+                          <span className="font-bold">{stats.users.staff}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Trainers</span>
+                          <span className="font-bold">{stats.trainers.total}</span>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                   
                   <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Staff</CardTitle>
+                    <CardHeader className="pb-2 bg-green-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <Coins className="mr-2 h-5 w-5 text-green-500" />
+                        Earnings
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.users.staff || 0}</div>
-                      <p className="text-xs text-muted-foreground">Trainers and employees</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Equipment</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.equipment || 0}</div>
-                      <p className="text-xs text-muted-foreground">Total gym equipment</p>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Total Earnings</span>
+                          <span className="font-bold">${stats.earnings.total.toLocaleString()}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Monthly Revenue</span>
+                          <span className="font-bold">${stats.earnings.monthly.toLocaleString()}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Yearly Revenue</span>
+                          <span className="font-bold">${stats.earnings.yearly.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2 bg-amber-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <CalendarCheck className="mr-2 h-5 w-5 text-amber-500" />
+                        Attendance
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Today's Attendance</span>
+                          <span className="font-bold">{stats.attendance.today}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Weekly Attendance</span>
+                          <span className="font-bold">{stats.attendance.week}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Monthly Attendance</span>
+                          <span className="font-bold">{stats.attendance.month}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2 bg-red-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <Dumbbell className="mr-2 h-5 w-5 text-red-500" />
+                        Equipment
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Total Equipment</span>
+                          <span className="font-bold">{stats.equipment}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Functional</span>
+                          <span className="font-bold text-green-600">{Math.floor(stats.equipment * 0.9)}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Under Maintenance</span>
+                          <span className="font-bold text-amber-600">{Math.floor(stats.equipment * 0.1)}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2 bg-cyan-50">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <UserCog className="mr-2 h-5 w-5 text-cyan-500" />
+                        Trainer Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Total Trainers</span>
+                          <span className="font-bold">{stats.trainers.total}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">Active Trainers</span>
+                          <span className="font-bold text-green-600">{stats.trainers.active}</span>
+                        </div>
+                        <div className="h-px bg-muted" />
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">On Leave</span>
+                          <span className="font-bold text-amber-600">{stats.trainers.total - stats.trainers.active}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                   <Card className="col-span-1">
-                    <CardHeader>
-                      <CardTitle>System Health</CardTitle>
+                    <CardHeader className="bg-slate-50">
+                      <CardTitle className="flex items-center">
+                        <ListChecks className="mr-2 h-5 w-5 text-slate-500" />
+                        Recent Activities
+                      </CardTitle>
+                      <CardDescription>Latest system events</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-4">
+                        {[
+                          { icon: <Users className="text-blue-500" />, title: "New student registered", time: "Today, 10:30 AM" },
+                          { icon: <UserCog className="text-purple-500" />, title: "Trainer schedule updated", time: "Today, 09:15 AM" },
+                          { icon: <Dumbbell className="text-red-500" />, title: "Equipment maintenance completed", time: "Yesterday, 04:45 PM" },
+                          { icon: <CalendarCheck className="text-green-500" />, title: "Monthly attendance report generated", time: "Yesterday, 02:30 PM" }
+                        ].map((item, index) => (
+                          <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                            <div className="w-10 h-10 rounded-full bg-white border flex items-center justify-center">
+                              {item.icon}
+                            </div>
+                            <div>
+                              <p className="font-medium">{item.title}</p>
+                              <p className="text-sm text-muted-foreground">{item.time}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="col-span-1">
+                    <CardHeader className="bg-slate-50">
+                      <CardTitle className="flex items-center">
+                        <BarChart className="mr-2 h-5 w-5 text-slate-500" />
+                        System Health
+                      </CardTitle>
                       <CardDescription>System uptime and status</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-4">
                       <div className="space-y-4">
                         <div className="flex flex-col space-y-1">
                           <div className="flex justify-between">
@@ -283,70 +447,64 @@ const AdminDashboard = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  
-                  <Card className="col-span-1">
-                    <CardHeader>
-                      <CardTitle>Recent Activity</CardTitle>
-                      <CardDescription>Latest system events</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {[1, 2, 3, 4].map((item) => (
-                          <div key={item} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                              {item % 2 === 0 ? (
-                                <Users size={20} />
-                              ) : (
-                                <Dumbbell size={20} />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium">
-                                {item % 2 === 0 
-                                  ? "New user registered" 
-                                  : "Equipment maintenance scheduled"}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(Date.now() - item * 3600000).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </>
             )}
           </TabsContent>
           
-          <TabsContent value="users">
+          <TabsContent value="members">
             <UserManagement />
           </TabsContent>
           
-          <TabsContent value="equipment" className="space-y-4">
+          <TabsContent value="trainers" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Equipment Management</CardTitle>
-                <CardDescription>Manage gym equipment inventory</CardDescription>
+              <CardHeader className="bg-slate-50">
+                <CardTitle>Trainer Management</CardTitle>
+                <CardDescription>Manage gym trainers and staff</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center text-muted-foreground p-8">
-                  Equipment management component will be implemented here
+              <CardContent className="pt-4">
+                <div className="text-center p-8">
+                  <UserCog className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Trainer Management</h3>
+                  <p className="text-muted-foreground">
+                    Add, edit, or remove trainers. Assign trainers to members and manage their schedules.
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="trainers" className="space-y-4">
+          <TabsContent value="equipment" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Trainer Management</CardTitle>
-                <CardDescription>Manage gym trainers and staff</CardDescription>
+              <CardHeader className="bg-slate-50">
+                <CardTitle>Equipment Management</CardTitle>
+                <CardDescription>Manage gym equipment inventory</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center text-muted-foreground p-8">
-                  Trainer management component will be implemented here
+              <CardContent className="pt-4">
+                <div className="text-center p-8">
+                  <Dumbbell className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Equipment Management</h3>
+                  <p className="text-muted-foreground">
+                    Track equipment inventory, maintenance schedules, and usage statistics.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="attendance" className="space-y-4">
+            <Card>
+              <CardHeader className="bg-slate-50">
+                <CardTitle>Attendance Tracking</CardTitle>
+                <CardDescription>Monitor member attendance and engagement</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-center p-8">
+                  <CalendarCheck className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Attendance Management</h3>
+                  <p className="text-muted-foreground">
+                    View and track attendance records for all members. Generate reports and analyze patterns.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -354,13 +512,17 @@ const AdminDashboard = () => {
           
           <TabsContent value="settings" className="space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="bg-slate-50">
                 <CardTitle>System Settings</CardTitle>
                 <CardDescription>Configure system-wide settings</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center text-muted-foreground p-8">
-                  Settings component will be implemented here
+              <CardContent className="pt-4">
+                <div className="text-center p-8">
+                  <Settings className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Settings</h3>
+                  <p className="text-muted-foreground">
+                    Configure system settings, manage access permissions, and customize the platform.
+                  </p>
                 </div>
               </CardContent>
             </Card>

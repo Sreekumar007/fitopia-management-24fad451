@@ -15,7 +15,9 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminLogin from "./pages/AdminLogin";
-import Dashboard from "./pages/Dashboard";
+import StudentDashboard from "./pages/StudentDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import TrainerDashboard from "./pages/TrainerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -43,7 +45,7 @@ const App = () => (
               path="/student/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={["student"]}>
-                  <Dashboard />
+                  <StudentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -51,7 +53,7 @@ const App = () => (
               path="/staff/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={["staff"]}>
-                  <Dashboard />
+                  <StaffDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -59,7 +61,7 @@ const App = () => (
               path="/trainer/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={["trainer"]}>
-                  <Dashboard />
+                  <TrainerDashboard />
                 </ProtectedRoute>
               } 
             />
