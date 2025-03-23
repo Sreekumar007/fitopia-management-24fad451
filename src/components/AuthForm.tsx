@@ -1,6 +1,5 @@
 
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,23 +10,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AuthType = "login" | "register";
-type UserRole = "student" | "staff" | "admin";
+type UserRole = "student" | "staff" | "admin" | "trainer";
 
 interface AuthFormProps {
   type: AuthType;
 }
 
-const API_URL = "http://localhost:5000/api";
-
 const AuthForm = ({ type }: AuthFormProps) => {
-  const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<UserRole>("student");
+  const [gender, setGender] = useState("");
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [height, setHeight] = useState<number | undefined>();
+  const [weight, setWeight] = useState<number | undefined>();
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,57 +38,22 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
     try {
       if (type === "login") {
-        // Handle login with actual API
-        const response = await fetch(`${API_URL}/auth/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password, role }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Login failed");
-        }
-
-        // Save token and user data to localStorage
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        
-        toast.success("Successfully logged in");
-        
-        // Redirect based on role
-        if (data.user.role === "admin") {
-          navigate("/admin/dashboard");
-        } else if (data.user.role === "staff") {
-          navigate("/staff/dashboard");
-        } else {
-          navigate("/student/dashboard");
-        }
+        await login(email, password, role);
       } else {
-        // Handle registration with actual API
-        const response = await fetch(`${API_URL}/auth/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name, email, password, role }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Registration failed");
-        }
-
-        toast.success("Successfully registered");
-        navigate("/login");
+        await register(
+          name, 
+          email, 
+          password, 
+          role,
+          gender,
+          bloodGroup,
+          height,
+          weight,
+          paymentMethod
+        );
       }
     } catch (error) {
       console.error("Authentication error:", error);
-      toast.error(`Authentication failed: ${error instanceof Error ? error.message : "Please try again"}`);
     } finally {
       setIsLoading(false);
     }
@@ -145,10 +112,88 @@ const AuthForm = ({ type }: AuthFormProps) => {
             <SelectContent>
               <SelectItem value="student">Student</SelectItem>
               <SelectItem value="staff">Staff</SelectItem>
+              <SelectItem value="trainer">Trainer</SelectItem>
               <SelectItem value="admin">Administrator</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {type === "register" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender</Label>
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Non-binary">Non-binary</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bloodGroup">Blood Group</Label>
+              <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select blood group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A+">A+</SelectItem>
+                  <SelectItem value="A-">A-</SelectItem>
+                  <SelectItem value="B+">B+</SelectItem>
+                  <SelectItem value="B-">B-</SelectItem>
+                  <SelectItem value="AB+">AB+</SelectItem>
+                  <SelectItem value="AB-">AB-</SelectItem>
+                  <SelectItem value="O+">O+</SelectItem>
+                  <SelectItem value="O-">O-</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="height">Height (cm)</Label>
+              <Input
+                id="height"
+                type="number"
+                value={height || ""}
+                onChange={(e) => setHeight(e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Enter height in cm"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                value={weight || ""}
+                onChange={(e) => setWeight(e.target.value ? Number(e.target.value) : undefined)}
+                placeholder="Enter weight in kg"
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Credit Card">Credit Card</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Direct Debit">Direct Debit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? (
@@ -163,6 +208,27 @@ const AuthForm = ({ type }: AuthFormProps) => {
             <span>{type === "login" ? "Login" : "Register"}</span>
           )}
         </Button>
+
+        {/* Display test credentials for easy access */}
+        {type === "login" && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-md">
+            <h3 className="font-medium text-sm mb-2">Test Credentials:</h3>
+            <div className="grid grid-cols-1 gap-2 text-xs">
+              <div>
+                <strong>Student:</strong> student@fitwell.com / student
+              </div>
+              <div>
+                <strong>Staff:</strong> staff@fitwell.com / staff
+              </div>
+              <div>
+                <strong>Trainer:</strong> trainer@fitwell.com / trainer
+              </div>
+              <div>
+                <strong>Admin:</strong> admin@fitwell.com / admin
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

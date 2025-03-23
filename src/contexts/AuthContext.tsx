@@ -43,7 +43,7 @@ const MOCK_USERS = [
     name: "Test Student",
     email: "student@fitwell.com",
     password: "student",
-    role: "student",
+    role: "student" as const,
     gender: "Male",
     blood_group: "O+",
     height: 175,
@@ -55,7 +55,7 @@ const MOCK_USERS = [
     name: "Test Staff",
     email: "staff@fitwell.com",
     password: "staff",
-    role: "staff",
+    role: "staff" as const,
     gender: "Female",
     blood_group: "A+",
     height: 165,
@@ -67,7 +67,7 @@ const MOCK_USERS = [
     name: "Test Trainer",
     email: "trainer@fitwell.com",
     password: "trainer",
-    role: "trainer",
+    role: "trainer" as const,
     gender: "Male",
     blood_group: "B+",
     height: 180,
@@ -79,7 +79,7 @@ const MOCK_USERS = [
     name: "Admin",
     email: "admin@fitwell.com",
     password: "admin",
-    role: "admin",
+    role: "admin" as const,
     gender: "Non-binary",
     blood_group: "AB+",
     height: 170,
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem("user", JSON.stringify(userWithoutPassword));
       
       setToken(fakeToken);
-      setUser(userWithoutPassword);
+      setUser(userWithoutPassword as User);
       
       toast.success("Successfully logged in");
       
