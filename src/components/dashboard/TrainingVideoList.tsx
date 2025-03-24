@@ -1,11 +1,23 @@
-
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { Video, Search, AlertCircle, PlayCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Video, 
+  Play, 
+  CalendarDays, 
+  Filter,
+  X
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 
 interface TrainingVideo {
   id: number;
@@ -13,141 +25,163 @@ interface TrainingVideo {
   description: string;
   video_url: string;
   category: string;
-  uploaded_by: number;
   created_at: string;
 }
 
-const API_URL = "http://localhost:5000/api";
+interface TrainingVideoListProps {
+  videos: TrainingVideo[];
+  isLoading: boolean;
+}
 
-const TrainingVideoList = () => {
-  const { token } = useAuth();
-  const [videos, setVideos] = useState<TrainingVideo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+const TrainingVideoList: React.FC<TrainingVideoListProps> = ({ videos, isLoading }) => {
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [activeVideo, setActiveVideo] = useState<TrainingVideo | null>(null);
+  
+  const categories = Array.from(new Set(videos.map(video => video.category)));
 
-  useEffect(() => {
-    fetchVideos();
-  }, [token]);
+  const filteredVideos = categoryFilter
+    ? videos.filter(video => video.category === categoryFilter)
+    : videos;
 
-  const fetchVideos = async () => {
-    if (!token) return;
-
-    try {
-      setIsLoading(true);
-      const response = await fetch(`${API_URL}/auth/training-videos`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch training videos");
-      }
-
-      const data = await response.json();
-      setVideos(data);
-    } catch (error) {
-      console.error("Error fetching videos:", error);
-      toast.error("Failed to load training videos");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const categories = [...new Set(videos.map(video => video.category))];
-
-  const filteredVideos = videos
-    .filter((video) => 
-      video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      video.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter((video) => 
-      selectedCategory ? video.category === selectedCategory : true
+  if (isLoading) {
+    return (
+      <Card className="w-full shadow-sm">
+        <CardHeader className="bg-indigo-50 border-b border-indigo-100">
+          <CardTitle className="flex items-center text-indigo-800">
+            <Video className="mr-2 h-5 w-5 text-indigo-600" />
+            Training Videos
+          </CardTitle>
+          <CardDescription>Fitness training videos for your workout routine</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex justify-center items-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+          </div>
+        </CardContent>
+      </Card>
     );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center">
-              <Video className="mr-2 h-5 w-5" />
-              Training Videos
-            </CardTitle>
-            <CardDescription>Watch instructional videos and tutorials</CardDescription>
-          </div>
-        </div>
+    <Card className="w-full shadow-sm">
+      <CardHeader className="bg-indigo-50 border-b border-indigo-100">
+        <CardTitle className="flex items-center text-indigo-800">
+          <Video className="mr-2 h-5 w-5 text-indigo-600" />
+          Training Videos
+        </CardTitle>
+        <CardDescription>Fitness training videos for your workout routine</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search videos..."
-              className="pl-8 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      <CardContent className="pt-6">
+        {/* Category Filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <div className="flex items-center bg-indigo-50 px-3 py-1 rounded-full text-sm text-indigo-800">
+            <Filter className="h-4 w-4 mr-1" />
+            <span>Filter:</span>
           </div>
-          <select
-            className="border rounded-md px-3 py-2 bg-background"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+          
+          <Badge 
+            variant={categoryFilter === null ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setCategoryFilter(null)}
           >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+            All
+          </Badge>
+          
+          {categories.map((category) => (
+            <Badge 
+              key={category}
+              variant={categoryFilter === category ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category}
+            </Badge>
+          ))}
         </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+
+        {filteredVideos.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">
+            <Video className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+            <p>No training videos available.</p>
           </div>
-        ) : filteredVideos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredVideos.map((video) => (
-              <div key={video.id} className="border rounded-lg overflow-hidden bg-card">
-                <div className="aspect-video bg-muted relative flex items-center justify-center">
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                    <Button variant="ghost" className="rounded-full w-12 h-12 bg-white/90 flex items-center justify-center p-0">
-                      <PlayCircle className="h-8 w-8 text-primary" />
-                    </Button>
-                  </div>
-                  <span className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-0.5 rounded text-xs">
-                    {/* Placeholder duration */}
-                    10:30
-                  </span>
+              <div 
+                key={video.id} 
+                className="bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              >
+                <div className="aspect-video bg-gray-100 relative flex items-center justify-center group">
+                  {/* Video thumbnail with play button */}
+                  <div 
+                    className="absolute inset-0 bg-indigo-800 bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"
+                  ></div>
+                  <Button 
+                    variant="default" 
+                    size="icon" 
+                    className="bg-indigo-600 hover:bg-indigo-700 group-hover:scale-110 transition-transform"
+                    onClick={() => setActiveVideo(video)}
+                  >
+                    <Play className="h-5 w-5" />
+                  </Button>
                 </div>
+                
                 <div className="p-4">
-                  <div className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary mb-2">
-                    {video.category}
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-indigo-900">{video.title}</h3>
+                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                      {video.category}
+                    </Badge>
                   </div>
-                  <h3 className="font-semibold mb-1">{video.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{video.description}</p>
-                  <p className="text-xs text-muted-foreground mt-2">Added on {formatDate(video.created_at)}</p>
+                  
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    {video.description}
+                  </p>
+                  
+                  <div className="flex items-center text-xs text-gray-500">
+                    <CalendarDays className="h-3 w-3 mr-1" />
+                    <span>{new Date(video.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-12 border rounded-md bg-muted/10">
-            <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-            <h3 className="font-medium">No videos found</h3>
-            <p className="text-muted-foreground text-sm mt-1">
-              {searchTerm || selectedCategory ? "Try adjusting your search or filters" : "No training video records available"}
-            </p>
-          </div>
         )}
       </CardContent>
+
+      {/* Video player dialog */}
+      {activeVideo && (
+        <Dialog open={!!activeVideo} onOpenChange={(open) => !open && setActiveVideo(null)}>
+          <DialogContent className="sm:max-w-[80vw] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{activeVideo.title}</DialogTitle>
+              <DialogDescription>{activeVideo.category}</DialogDescription>
+            </DialogHeader>
+            
+            <div className="aspect-video w-full bg-black overflow-hidden rounded-md">
+              <iframe
+                width="100%"
+                height="100%"
+                src={activeVideo.video_url}
+                title={activeVideo.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+            
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">Description</h4>
+              <p className="text-sm text-gray-600">{activeVideo.description}</p>
+            </div>
+            
+            <DialogClose className="absolute top-4 right-4">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };

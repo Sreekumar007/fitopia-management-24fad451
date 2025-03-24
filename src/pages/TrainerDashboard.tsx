@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -32,6 +31,8 @@ import {
 import { toast } from "sonner";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
+import ScheduleManager from "@/components/trainer/ScheduleManager";
+import DietPlanManager from "@/components/trainer/DietPlanManager";
 
 // Mock data for trainer dashboard
 const mockTrainerData = {
@@ -408,13 +409,7 @@ const TrainerDashboard = () => {
                 <CardDescription>Manage your scheduled training sessions</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <Calendar className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Training Sessions</h3>
-                  <p className="text-slate-500">
-                    Schedule, view, and manage your training sessions with members.
-                  </p>
-                </div>
+                <ScheduleManager />
               </CardContent>
             </Card>
           </TabsContent>
@@ -462,13 +457,7 @@ const TrainerDashboard = () => {
                 <CardDescription>Create and manage nutrition plans</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <Utensils className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Diet & Nutrition</h3>
-                  <p className="text-slate-500">
-                    Create personalized diet plans and nutrition guides for members.
-                  </p>
-                </div>
+                <DietPlanManager />
               </CardContent>
             </Card>
           </TabsContent>

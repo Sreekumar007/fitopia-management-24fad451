@@ -1,4 +1,3 @@
-
 from database import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -20,6 +19,8 @@ class User(db.Model):
     
     # Relationships
     student_profile = db.relationship('StudentProfile', backref='user', uselist=False, cascade='all, delete-orphan')
+    notifications = db.relationship('Notification', backref='user', lazy=True, cascade='all, delete-orphan')
+    schedules = db.relationship('Schedule', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -35,7 +36,14 @@ class StudentProfile(db.Model):
     medical_conditions = db.Column(db.Text, nullable=True)
     admission_date = db.Column(db.DateTime, default=datetime.utcnow)
     department = db.Column(db.String(100), nullable=True)
-    attendance = db.relationship('Attendance', backref='student', lazy=True)
+    
+    # Fix relationship to explicitly define the foreign key
+    attendances = db.relationship('Attendance', 
+                                 backref='student_profile', 
+                                 lazy=True, 
+                                 foreign_keys='Attendance.student_id')
+    
+    # No direct relationship to StudentDietPlan to avoid circular references
 
 class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -66,7 +74,23 @@ class DietPlan(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    creator = db.relationship('User', backref='diet_plans')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_diet_plans')
+    # Explicitly define relationship with a different backref name
+    student_assignments = db.relationship('StudentDietPlan', backref='diet_plan_ref', lazy=True)
+
+class StudentDietPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    diet_plan_id = db.Column(db.Integer, db.ForeignKey('diet_plan.id'), nullable=False)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='active')  # 'active', 'completed', 'cancelled'
+    notes = db.Column(db.Text, nullable=True)
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Rename and specify foreign keys explicitly with different backref names
+    trainer = db.relationship('User', foreign_keys=[assigned_by], backref='assigned_diet_plans')
+    student = db.relationship('User', foreign_keys=[student_id], backref='student_diet_plans')
+    # The diet_plan relationship is handled by the backref from DietPlan
 
 class Equipment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -107,3 +131,23 @@ class MedicalRecord(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     user = db.relationship('User', backref='medical_records')
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    scheduled_time = db.Column(db.DateTime, nullable=False)
+    location = db.Column(db.String(100), nullable=True)
+    trainer_id = db.Column(db.Integer, db.ForeignKey('trainer.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    trainer = db.relationship('Trainer', backref='training_sessions')
