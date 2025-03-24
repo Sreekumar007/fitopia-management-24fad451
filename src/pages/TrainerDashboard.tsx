@@ -112,11 +112,41 @@ const TrainerDashboard = () => {
       const dietPlansData = await getDietPlans();
       setDietPlans(dietPlansData);
       
-      // Calculate dashboard metrics
+      // Calculate dashboard metrics from actual data
       const staffCount = studentsData.filter(s => s.role === 'staff').length;
       const studentCount = studentsData.filter(s => s.role === 'student').length;
       const totalMembers = staffCount + studentCount;
-      const activeMembers = Math.round(totalMembers * 0.65); // Estimate active members
+      
+      // Calculate active members based on recent activity
+      // A member is considered active if they have had a session in the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+      
+      // Get all student IDs who had a session in the last 30 days
+      const activeStudentIds = new Set(
+        schedulesData
+          .filter(s => s.scheduled_time > thirtyDaysAgoStr)
+          .map(s => s.student_id)
+      );
+      
+      // Count active members
+      const activeMembers = activeStudentIds.size;
+      
+      // Calculate session stats from actual data
+      const today = new Date().toISOString().split('T')[0];
+      const todaySessions = schedulesData.filter(s => 
+        s.scheduled_time.startsWith(today)
+      ).length;
+      
+      const upcomingSessions = schedulesData.filter(s => 
+        s.scheduled_time > today
+      ).length;
+      
+      // Assume a session is completed if it's in the past and not today
+      const completedSessions = schedulesData.filter(s => 
+        s.scheduled_time < today
+      ).length;
       
       // Update dashboard data
       setData({
@@ -127,17 +157,13 @@ const TrainerDashboard = () => {
           active: activeMembers
         },
         sessions: {
-          today: schedulesData.filter(s => 
-            s.scheduled_time.startsWith(new Date().toISOString().split('T')[0])
-          ).length,
-          upcoming: schedulesData.filter(s => 
-            s.scheduled_time > new Date().toISOString().split('T')[0]
-          ).length,
-          completed: 0 // Assuming completed sessions are not available in the current data
+          today: todaySessions,
+          upcoming: upcomingSessions,
+          completed: completedSessions
         },
         videos: {
           total: videosData.length,
-          popular: Math.min(videosData.length, 5) // Assume top 5 are popular
+          popular: Math.min(videosData.length, 3) // Top 3 are considered popular
         }
       });
     } catch (error) {
@@ -294,7 +320,13 @@ const TrainerDashboard = () => {
                     <CardContent>
                       <div className="text-3xl font-bold">{data.members.active}</div>
                       <div className="text-xs text-emerald-100 mt-2">
-                        {Math.round((data.members.active / data.members.total) * 100)}% of total members
+                        {data.members.total > 0 
+                          ? `${Math.round((data.members.active / data.members.total) * 100)}% of total members`
+                          : 'No members yet'
+                        }
+                      </div>
+                      <div className="text-xs text-emerald-100 mt-1">
+                        Based on last 30 days activity
                       </div>
                     </CardContent>
                   </Card>
@@ -309,7 +341,28 @@ const TrainerDashboard = () => {
                     <CardContent>
                       <div className="text-3xl font-bold">{data.sessions.today}</div>
                       <div className="text-xs text-indigo-100 mt-2">
-                        {data.sessions.upcoming} upcoming in the next 7 days
+                        {data.sessions.upcoming} upcoming sessions scheduled
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-gradient-to-br from-amber-600 to-amber-700 text-white">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center">
+                        <Video className="mr-2 h-5 w-5" />
+                        Training Videos
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold">{data.videos.total}</div>
+                      <div className="text-xs text-amber-100 mt-2">
+                        {data.videos.total > 0 
+                          ? `${data.videos.popular} featured videos available`
+                          : 'No videos uploaded yet'
+                        }
+                      </div>
+                      <div className="text-xs text-amber-100 mt-1">
+                        Click "Videos" tab to upload more
                       </div>
                     </CardContent>
                   </Card>
