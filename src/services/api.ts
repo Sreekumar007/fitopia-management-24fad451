@@ -1,3 +1,4 @@
+
 import axios from "axios";
 
 const API_URL = "http://localhost:5000/api";
@@ -61,16 +62,16 @@ api.interceptors.response.use(
   }
 );
 
-// Auth services
+// Auth services - Note that these return direct data objects, not AxiosResponse objects
 export const authService = {
-  login: async (email: string, password: string, role?: string) => {
+  login: async (email: string, password: string, role?: string): Promise<AuthResponse> => {
     const data = role ? { email, password, role } : { email, password };
     return api.post<AuthResponse>("/auth/login", data);
   },
-  register: async (userData: any) => {
+  register: async (userData: any): Promise<AuthResponse> => {
     return api.post<AuthResponse>("/auth/register", userData);
   },
-  verifyToken: async () => {
+  verifyToken: async (): Promise<TokenVerificationResponse> => {
     return api.get<TokenVerificationResponse>("/auth/verify");
   }
 };

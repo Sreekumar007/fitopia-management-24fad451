@@ -122,8 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       try {
-        // API call returns response data directly due to interceptor in api.ts
-        const response = await authService.register(userData);
+        // API service returns response data directly (due to interceptor in api.ts)
+        const response: AuthResponse = await authService.register(userData);
         
         if (response && response.user && response.access_token) {
           login(response.access_token, response.user);
@@ -154,8 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // In a real app, verify token with the backend
       try {
-        // API call returns response data directly due to interceptor in api.ts
-        const response = await authService.verifyToken();
+        // API service returns response data directly (due to interceptor in api.ts)
+        const response: TokenVerificationResponse = await authService.verifyToken();
         
         if (response && response.valid) {
           // Token is valid, update user if needed
