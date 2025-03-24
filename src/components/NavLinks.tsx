@@ -47,7 +47,9 @@ const NavLinks = () => {
                     ? "/admin/dashboard" 
                     : user?.role === "staff" 
                       ? "/staff/dashboard" 
-                      : "/student/dashboard"
+                      : user?.role === "trainer"
+                        ? "/trainer/dashboard"
+                        : "/student/dashboard"
                 }>
                   Dashboard
                 </Link>

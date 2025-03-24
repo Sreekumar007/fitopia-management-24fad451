@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 
@@ -16,9 +17,21 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isAuthenticated: boolean; // Add isAuthenticated property
   login: (token: string, user: User) => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: string,
+    gender?: string,
+    bloodGroup?: string,
+    height?: number,
+    weight?: number,
+    paymentMethod?: string
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,6 +71,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Clear default Authorization header
     delete axios.defaults.headers.common["Authorization"];
+  };
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: string,
+    gender?: string,
+    bloodGroup?: string,
+    height?: number,
+    weight?: number,
+    paymentMethod?: string
+  ) => {
+    try {
+      setIsLoading(true);
+      
+      // For demo purposes - simulate registration success
+      if (email.includes("demo") || email.includes("test")) {
+        const demoUser = {
+          id: Math.floor(Math.random() * 1000),
+          name,
+          email,
+          role: role as "admin" | "staff" | "trainer" | "student",
+          gender,
+          blood_group: bloodGroup,
+          height,
+          weight
+        };
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        login(`demo-token-${role}`, demoUser);
+        return;
+      }
+      
+      // In a real app, send registration data to the backend
+      const userData = {
+        name,
+        email,
+        password,
+        role,
+        gender,
+        blood_group: bloodGroup,
+        height,
+        weight,
+        payment_method: paymentMethod
+      };
+      
+      const response = await axios.post("http://localhost:5000/api/auth/register", userData);
+      
+      if (response.data.user && response.data.token) {
+        login(response.data.token, response.data.user);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const checkAuth = async () => {
@@ -106,9 +179,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
+        isAuthenticated: !!user && !!token, // Add isAuthenticated property
         login,
         logout,
-        checkAuth
+        checkAuth,
+        register
       }}
     >
       {children}

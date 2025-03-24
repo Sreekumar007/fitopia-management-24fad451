@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const Register = () => {
-  const { register: registerUser, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const { register, isLoading } = useAuth();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -39,7 +40,7 @@ const Register = () => {
       const heightNum = height ? parseFloat(height) : undefined;
       const weightNum = weight ? parseFloat(weight) : undefined;
       
-      await registerUser(
+      await register(
         name, 
         email, 
         password, 
@@ -50,8 +51,16 @@ const Register = () => {
         weightNum, 
         paymentMethod
       );
+      
+      toast.success("Registration successful!");
+      
+      // Redirect based on role
+      if (role === "student") {
+        navigate("/student/dashboard");
+      } else if (role === "staff") {
+        navigate("/staff/dashboard");
+      }
     } catch (error) {
-      // Error is already handled in the register function
       console.error("Registration submission error:", error);
       toast.error("Registration failed. Please try again.");
     }

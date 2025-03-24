@@ -1,13 +1,22 @@
 
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigationType } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  
+  // Check if we can access router functionality
+  let location;
+  try {
+    location = useLocation();
+  } catch (e) {
+    // If useLocation throws an error, we're outside a Router context
+    // Use a default location object
+    location = { pathname: "/" };
+  }
 
   const isActive = (path: string) => location.pathname === path;
 
