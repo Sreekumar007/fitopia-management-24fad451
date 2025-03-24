@@ -25,7 +25,7 @@ api.interceptors.request.use(
 
 // Add a response interceptor to handle common errors and directly return data
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => response.data, // This returns the response.data directly instead of the whole response
   (error) => {
     console.error("API Error:", error.response?.data || error.message);
     return Promise.reject(error);
