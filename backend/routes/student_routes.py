@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from database import db
-from models import User, StudentProfile, TrainingVideo, DietPlan, Equipment, Trainer, WorkoutPlan, Attendance, MedicalRecord, Notification, Schedule, StudentDietPlan
+from models import db, User, StudentProfile, TrainingVideo, DietPlan, Equipment, Trainer, WorkoutPlan, Attendance, MedicalRecord, Notification, Schedule, StudentDietPlan
 from middleware.auth_middleware import student_required
 import traceback
 from datetime import datetime, timedelta

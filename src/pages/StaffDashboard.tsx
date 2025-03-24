@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -19,54 +18,308 @@ import {
   Calendar, 
   Video, 
   Utensils, 
-  Dumbbell, 
   Settings, 
   LogOut,
   Building2,
-  FileSpreadsheet,
   Users,
-  HeartPulse,
-  BookOpen,
   Clipboard,
   BarChart3,
-  Bell
+  Bell,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
 import TrainingVideoList from "@/components/dashboard/TrainingVideoList";
 import DietPlanList from "@/components/dashboard/DietPlanList";
-
-// Mock data for staff dashboard
-const mockStaffData = {
-  profile: {
-    name: "Emily Wilson",
-    department: "Physical Education",
-    position: "Fitness Coordinator",
-    gender: "Female",
-    blood_group: "B+",
-    height: 165,
-    weight: 60
-  },
-  stats: {
-    workoutsCompleted: 56,
-    attendance: "92%",
-    sessionsScheduled: 12,
-    facultyMembers: 28
-  },
-  activities: [
-    { title: "Faculty Fitness Session", date: "Today, 4:00 PM", participants: 12 },
-    { title: "Staff Yoga Class", date: "Tomorrow, 8:30 AM", participants: 8 },
-    { title: "Department Meeting", date: "Friday, 2:00 PM", participants: 15 }
-  ]
-};
+import staffService, { StaffProfile, StaffStats, Activity, DepartmentUpdate, FacultyMember } from "@/services/staffService";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  const [data, setData] = useState(mockStaffData);
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [stats, setStats] = useState<StaffStats | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [updates, setUpdates] = useState<DepartmentUpdate[]>([]);
+  const [facultyMembers, setFacultyMembers] = useState<FacultyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  
+  // Add Faculty Modal State
+  const [isAddFacultyModalOpen, setIsAddFacultyModalOpen] = useState(false);
+  const [newFacultyMember, setNewFacultyMember] = useState({
+    name: "",
+    email: "",
+    department: "Physical Education",
+    position: "Trainer",
+  });
+  
+  // Add Schedule Activity Modal State
+  const [isScheduleActivityModalOpen, setIsScheduleActivityModalOpen] = useState(false);
+  const [newActivity, setNewActivity] = useState({
+    title: "",
+    date: new Date().toISOString().split('T')[0], // Default to today
+    time: "09:00 AM",
+    location: "Main Gym",
+    description: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Add an edit activity modal state
+  const [isEditActivityModalOpen, setIsEditActivityModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewFacultyMember(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name: string, value: string) => {
+    setNewFacultyMember(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle form submission
+  const handleAddFacultyMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Simple validation
+    if (!newFacultyMember.name || !newFacultyMember.email) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Make API call to add faculty member
+      console.log("Submitting faculty member:", newFacultyMember);
+      
+      // Log the actual API request for debugging
+      console.log("API Request to:", "staff/faculty");
+      console.log("API Request method:", "POST");
+      console.log("API Request body:", JSON.stringify(newFacultyMember));
+      
+      const response = await staffService.addFacultyMember(newFacultyMember);
+      console.log("Response from add faculty member:", response);
+      
+      // Force a refetch of faculty members to ensure up-to-date data
+      console.log("Fetching updated faculty list...");
+      const updatedFacultyData = await staffService.getFacultyMembers();
+      console.log("Updated faculty list:", updatedFacultyData);
+      setFacultyMembers(updatedFacultyData);
+      
+      // Close modal and reset form
+      setIsAddFacultyModalOpen(false);
+      setNewFacultyMember({
+        name: "",
+        email: "",
+        department: "Physical Education",
+        position: "Trainer",
+      });
+      
+      toast.success("Faculty member added successfully");
+    } catch (err: any) {
+      console.error("Error adding faculty member:", err);
+      
+      // Log detailed error information
+      if (err.response) {
+        console.error("Response error data:", err.response.data);
+        console.error("Response error status:", err.response.status);
+        console.error("Response error headers:", err.response.headers);
+        toast.error(`Failed to add faculty member: ${err.response.data?.error || "Server error"}`);
+      } else if (err.request) {
+        console.error("Request error:", err.request);
+        toast.error("Network error. Please check your connection");
+      } else {
+        console.error("General error:", err.message);
+        toast.error(`Failed to add faculty member: ${err.message || "Unknown error"}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Refresh faculty members function
+  const refreshFacultyMembers = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Refreshing faculty members list...");
+      const updatedFaculty = await staffService.getFacultyMembers();
+      console.log("Refreshed faculty list:", updatedFaculty);
+      setFacultyMembers(updatedFaculty);
+      toast.success("Faculty list refreshed");
+    } catch (error: any) {
+      console.error("Error refreshing faculty list:", error);
+      toast.error("Failed to refresh faculty list");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Refresh activities function
+  const refreshActivities = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Refreshing activities list...");
+      const updatedActivities = await staffService.getActivities();
+      console.log("Refreshed activities list:", updatedActivities);
+      setActivities(updatedActivities);
+      toast.success("Activities list refreshed");
+    } catch (error: any) {
+      console.error("Error refreshing activities list:", error);
+      toast.error("Failed to refresh activities list");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle scheduling a new activity
+  const handleScheduleActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Simple validation
+    if (!newActivity.title || !newActivity.date || !newActivity.time) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Make API call to schedule activity
+      console.log("Scheduling new activity:", newActivity);
+      
+      // Log the actual API request for debugging
+      console.log("API Request to:", "staff/activities");
+      console.log("API Request method:", "POST");
+      console.log("API Request body:", JSON.stringify(newActivity));
+      
+      const response = await staffService.addActivity(newActivity);
+      console.log("Response from add activity:", response);
+      
+      // Force a refetch of activities to ensure up-to-date data
+      console.log("Refreshing activities list...");
+      await refreshActivities();
+      
+      // Close modal and reset form
+      setIsScheduleActivityModalOpen(false);
+      setNewActivity({
+        title: "",
+        date: new Date().toISOString().split('T')[0],
+        time: "09:00 AM",
+        location: "Main Gym",
+        description: ""
+      });
+      
+      toast.success("Activity scheduled successfully");
+    } catch (err: any) {
+      console.error("Error scheduling activity:", err);
+      
+      // Log detailed error information
+      if (err.response) {
+        console.error("Response error data:", err.response.data);
+        console.error("Response error status:", err.response.status);
+        console.error("Response error headers:", err.response.headers);
+        toast.error(`Failed to schedule activity: ${err.response.data?.error || "Server error"}`);
+      } else if (err.request) {
+        console.error("Request error:", err.request);
+        toast.error("Network error. Please check your connection");
+      } else {
+        console.error("General error:", err.message);
+        toast.error(`Failed to schedule activity: ${err.message || "Unknown error"}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Function to open the edit modal for a specific activity
+  const handleEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    setNewActivity({
+      title: activity.title,
+      date: activity.date,
+      time: activity.time,
+      location: activity.location || "Main Gym",
+      description: ""
+    });
+    setIsEditActivityModalOpen(true);
+  };
+
+  // Handle updating an activity
+  const handleUpdateActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingActivity) return;
+    
+    // Simple validation
+    if (!newActivity.title || !newActivity.date || !newActivity.time) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Make API call to update activity
+      console.log("Updating activity:", newActivity);
+      
+      // We don't have an update endpoint yet, so we'll delete and recreate
+      // First delete the existing activity
+      await staffService.deleteActivity(editingActivity.id);
+      
+      // Then create a new one with the updated data
+      const response = await staffService.addActivity(newActivity);
+      console.log("Response from update activity:", response);
+      
+      // Force a refetch of activities to ensure up-to-date data
+      console.log("Refreshing activities list...");
+      await refreshActivities();
+      
+      // Close modal and reset form
+      setIsEditActivityModalOpen(false);
+      setEditingActivity(null);
+      setNewActivity({
+        title: "",
+        date: new Date().toISOString().split('T')[0],
+        time: "09:00 AM",
+        location: "Main Gym",
+        description: ""
+      });
+      
+      toast.success("Activity updated successfully");
+    } catch (err: any) {
+      console.error("Error updating activity:", err);
+      
+      // Log detailed error information
+      if (err.response) {
+        console.error("Response error data:", err.response.data);
+        console.error("Response error status:", err.response.status);
+        console.error("Response error headers:", err.response.headers);
+        toast.error(`Failed to update activity: ${err.response.data?.error || "Server error"}`);
+      } else if (err.request) {
+        console.error("Request error:", err.request);
+        toast.error("Network error. Please check your connection");
+      } else {
+        console.error("General error:", err.message);
+        toast.error(`Failed to update activity: ${err.message || "Unknown error"}`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     // Check if user is staff
@@ -76,20 +329,109 @@ const StaffDashboard = () => {
       return;
     }
 
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setData({
-        ...mockStaffData,
-        profile: {
-          ...mockStaffData.profile,
-          name: user.name || mockStaffData.profile.name
+    // Fetch data from backend
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError("");
+      
+      try {
+        console.log("Starting staff dashboard data fetch...");
+        
+        // First, attempt to get the user profile separately, which can help detect auth issues early
+        try {
+          const profileData = await staffService.getProfile();
+          setProfile(profileData || null);
+          console.log("Staff profile loaded successfully", profileData);
+        } catch (profileErr: any) {
+          console.error("Error loading profile data:", profileErr);
+          
+          // If it's an auth issue (401/403), it will trigger logout in the component
+          if (profileErr.response && (profileErr.response.status === 401 || profileErr.response.status === 403)) {
+            console.log("Auth issue detected, clearing token and redirecting", profileErr.response.status);
+            logout();
+            navigate("/login", { state: { message: "Session expired. Please log in again." } });
+            return; // Stop further execution
+          }
+          
+          // For 404, we'll create a default profile to prevent cascading errors
+          if (profileErr.response && profileErr.response.status === 404) {
+            setProfile({
+              id: user?.id || 0,
+              name: user?.name || "Staff User",
+              email: user?.email || "staff@example.com",
+              department: "Physical Education",
+              position: "Fitness Coordinator",
+              gender: "",
+              blood_group: "",
+              height: 0,
+              weight: 0
+            });
+          }
         }
-      });
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [navigate, user]);
+        
+        // Fetch remaining data in parallel
+        const [statsData, activitiesData, updatesData, facultyData] = await Promise.all([
+          staffService.getStats().catch(e => {
+            console.error("Error fetching stats:", e);
+            return null;
+          }),
+          staffService.getActivities().catch(e => {
+            console.error("Error fetching activities:", e);
+            return [];
+          }),
+          staffService.getDepartmentUpdates().catch(e => {
+            console.error("Error fetching updates:", e);
+            return [];
+          }),
+          staffService.getFacultyMembers().catch(e => {
+            console.error("Error fetching faculty members:", e);
+            return [];
+          })
+        ]);
+        
+        console.log("Data fetched from backend:", {
+          stats: statsData,
+          activities: activitiesData,
+          updates: updatesData,
+          faculty: facultyData
+        });
+        
+        // Ensure proper data types are set to state
+        setStats(statsData || null);
+        setActivities(Array.isArray(activitiesData) ? activitiesData : []);
+        setUpdates(Array.isArray(updatesData) ? updatesData : []);
+        setFacultyMembers(Array.isArray(facultyData) ? facultyData : []);
+      } catch (err: any) {
+        console.error("Error fetching staff data:", err);
+        let errorMessage = "Failed to load dashboard data";
+        
+        if (err.response) {
+          // The request was made and the server responded with a status code outside the 2xx range
+          errorMessage = `Server error (${err.response.status}): ${err.response.data?.error || err.message}`;
+          
+          // Handle auth errors
+          if (err.response.status === 401 || err.response.status === 403) {
+            logout();
+            navigate("/login", { state: { message: "Session expired. Please log in again." } });
+            return;
+          }
+        } else if (err.request) {
+          // The request was made but no response was received
+          errorMessage = "Could not connect to the server. Please check if the backend is running.";
+        } else {
+          // Something happened in setting up the request
+          errorMessage = `Error: ${err.message}`;
+        }
+        
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [navigate, user, logout]);
 
   const handleLogout = () => {
     logout();
@@ -158,33 +500,6 @@ const StaffDashboard = () => {
             <Utensils className="mr-2 h-5 w-5" />
             Diet Plans
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start text-white hover:bg-teal-800 ${activeTab === "wellness" ? "bg-teal-800" : ""}`}
-            onClick={() => setActiveTab("wellness")}
-          >
-            <HeartPulse className="mr-2 h-5 w-5" />
-            Wellness Program
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start text-white hover:bg-teal-800 ${activeTab === "records" ? "bg-teal-800" : ""}`}
-            onClick={() => setActiveTab("records")}
-          >
-            <FileSpreadsheet className="mr-2 h-5 w-5" />
-            Fitness Records
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            className={`w-full justify-start text-white hover:bg-teal-800 ${activeTab === "resources" ? "bg-teal-800" : ""}`}
-            onClick={() => setActiveTab("resources")}
-          >
-            <BookOpen className="mr-2 h-5 w-5" />
-            Resources
-          </Button>
         </nav>
         
         <div className="mt-auto pt-4 border-t border-teal-600 space-y-1">
@@ -208,212 +523,438 @@ const StaffDashboard = () => {
         </div>
       </aside>
       
-      {/* Main content */}
-      <div className="flex-grow p-6">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-teal-900">College Staff Dashboard</h1>
-          <p className="text-teal-600">
-            Manage faculty fitness programs and departmental wellness initiatives
-          </p>
-        </header>
-        
-        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 md:w-[600px] bg-teal-100 p-1">
+      {/* Add Faculty Modal */}
+      {isAddFacultyModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-teal-900">Add New Faculty Member</h3>
+              <button 
+                onClick={() => setIsAddFacultyModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddFacultyMember}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={newFacultyMember.name}
+                    onChange={handleInputChange}
+                    placeholder="Full Name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={newFacultyMember.email}
+                    onChange={handleInputChange}
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="department">Department</Label>
+                  <Select 
+                    value={newFacultyMember.department}
+                    onValueChange={(value) => handleSelectChange("department", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Physical Education">Physical Education</SelectItem>
+                      <SelectItem value="Computer Science">Computer Science</SelectItem>
+                      <SelectItem value="Mathematics">Mathematics</SelectItem>
+                      <SelectItem value="Physics">Physics</SelectItem>
+                      <SelectItem value="Chemistry">Chemistry</SelectItem>
+                      <SelectItem value="Biology">Biology</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="position">Position</Label>
+                  <Select 
+                    value={newFacultyMember.position}
+                    onValueChange={(value) => handleSelectChange("position", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Trainer">Trainer</SelectItem>
+                      <SelectItem value="Professor">Professor</SelectItem>
+                      <SelectItem value="Associate Professor">Associate Professor</SelectItem>
+                      <SelectItem value="Assistant Professor">Assistant Professor</SelectItem>
+                      <SelectItem value="Instructor">Instructor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddFacultyModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-teal-600 text-white hover:bg-teal-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Adding..." : "Add Faculty Member"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Schedule Activity Modal */}
+      {isScheduleActivityModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-teal-900">Schedule New Activity</h3>
+              <button 
+                onClick={() => setIsScheduleActivityModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleScheduleActivity}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Activity Title <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={newActivity.title}
+                    onChange={(e) => setNewActivity({...newActivity, title: e.target.value})}
+                    placeholder="Fitness Session, Meeting, etc."
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    value={newActivity.date}
+                    onChange={(e) => setNewActivity({...newActivity, date: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="time">Time <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={newActivity.time}
+                    onValueChange={(value) => setNewActivity({...newActivity, time: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="08:00 AM">08:00 AM</SelectItem>
+                      <SelectItem value="09:00 AM">09:00 AM</SelectItem>
+                      <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                      <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                      <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                      <SelectItem value="01:00 PM">01:00 PM</SelectItem>
+                      <SelectItem value="02:00 PM">02:00 PM</SelectItem>
+                      <SelectItem value="03:00 PM">03:00 PM</SelectItem>
+                      <SelectItem value="04:00 PM">04:00 PM</SelectItem>
+                      <SelectItem value="05:00 PM">05:00 PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Select 
+                    value={newActivity.location}
+                    onValueChange={(value) => setNewActivity({...newActivity, location: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Main Gym">Main Gym</SelectItem>
+                      <SelectItem value="Wellness Center">Wellness Center</SelectItem>
+                      <SelectItem value="Conference Room A">Conference Room A</SelectItem>
+                      <SelectItem value="Conference Room B">Conference Room B</SelectItem>
+                      <SelectItem value="Outdoor Field">Outdoor Field</SelectItem>
+                      <SelectItem value="Faculty Lounge">Faculty Lounge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    value={newActivity.description}
+                    onChange={(e) => setNewActivity({...newActivity, description: e.target.value})}
+                    placeholder="Brief description of the activity"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsScheduleActivityModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-teal-600 text-white hover:bg-teal-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Scheduling..." : "Schedule Activity"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Edit Activity Modal */}
+      {isEditActivityModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-teal-900">Edit Activity</h3>
+              <button 
+                onClick={() => setIsEditActivityModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateActivity}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Activity Title <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={newActivity.title}
+                    onChange={(e) => setNewActivity({...newActivity, title: e.target.value})}
+                    placeholder="Fitness Session, Meeting, etc."
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="date"
+                    name="date"
+                    type="date"
+                    value={newActivity.date}
+                    onChange={(e) => setNewActivity({...newActivity, date: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="time">Time <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={newActivity.time}
+                    onValueChange={(value) => setNewActivity({...newActivity, time: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="08:00 AM">08:00 AM</SelectItem>
+                      <SelectItem value="09:00 AM">09:00 AM</SelectItem>
+                      <SelectItem value="10:00 AM">10:00 AM</SelectItem>
+                      <SelectItem value="11:00 AM">11:00 AM</SelectItem>
+                      <SelectItem value="12:00 PM">12:00 PM</SelectItem>
+                      <SelectItem value="01:00 PM">01:00 PM</SelectItem>
+                      <SelectItem value="02:00 PM">02:00 PM</SelectItem>
+                      <SelectItem value="03:00 PM">03:00 PM</SelectItem>
+                      <SelectItem value="04:00 PM">04:00 PM</SelectItem>
+                      <SelectItem value="05:00 PM">05:00 PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Select 
+                    value={newActivity.location}
+                    onValueChange={(value) => setNewActivity({...newActivity, location: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Main Gym">Main Gym</SelectItem>
+                      <SelectItem value="Wellness Center">Wellness Center</SelectItem>
+                      <SelectItem value="Conference Room A">Conference Room A</SelectItem>
+                      <SelectItem value="Conference Room B">Conference Room B</SelectItem>
+                      <SelectItem value="Outdoor Field">Outdoor Field</SelectItem>
+                      <SelectItem value="Faculty Lounge">Faculty Lounge</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    name="description"
+                    value={newActivity.description}
+                    onChange={(e) => setNewActivity({...newActivity, description: e.target.value})}
+                    placeholder="Brief description of the activity"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditActivityModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-teal-600 text-white hover:bg-teal-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Updating..." : "Update Activity"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex-grow p-8">
+        <Tabs value={activeTab} className="w-full">
+          <TabsList className="w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="faculty">Faculty</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="wellness">Wellness</TabsTrigger>
+            <TabsTrigger value="videos">Training Videos</TabsTrigger>
+            <TabsTrigger value="diet">Diet Plans</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="overview" className="space-y-4">
-            {isLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-white border-teal-100 shadow-sm">
-                    <CardHeader className="bg-teal-50 border-b border-teal-100">
-                      <CardTitle className="flex items-center text-teal-800">
-                        <Building2 className="mr-2 h-5 w-5 text-teal-600" />
-                        Staff Profile
-                      </CardTitle>
-                      <CardDescription>Your department and position</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center space-x-4 mb-6">
-                        <div className="h-16 w-16 rounded-full bg-teal-200 flex items-center justify-center text-teal-700 text-xl font-bold">
-                          {user?.name?.charAt(0) || "S"}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg">{user?.name || data.profile.name}</h3>
-                          <p className="text-teal-600 text-sm">{data.profile.position}</p>
-                          <p className="text-teal-500 text-xs">{data.profile.department}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-xs text-teal-400">Gender</p>
-                            <p className="font-medium">{user?.gender || data.profile.gender}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-teal-400">Blood Group</p>
-                            <p className="font-medium">{user?.blood_group || data.profile.blood_group}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-xs text-teal-400">Height</p>
-                            <p className="font-medium">{user?.height || data.profile.height} cm</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-teal-400">Weight</p>
-                            <p className="font-medium">{user?.weight || data.profile.weight} kg</p>
-                          </div>
-                        </div>
-                        
-                        <div className="pt-2 border-t border-teal-100">
-                          <p className="text-sm font-medium text-teal-700 mb-2">Contact Information</p>
-                          <p className="text-sm">{user?.email}</p>
-                          <p className="text-sm text-teal-500">Ext. 4567 • Office 302B</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+          <TabsContent value="overview">
+            <Card>
+              <CardHeader className="bg-teal-50">
+                <CardTitle>Overview</CardTitle>
+                <CardDescription>Your current progress and statistics</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Statistics</h3>
+                    <p className="text-sm font-medium mb-1">Total Activities</p>
+                    <p className="text-teal-700 font-bold">{stats?.totalActivities || 0}</p>
+                  </div>
                   
-                  <Card className="bg-white border-teal-100 shadow-sm">
-                    <CardHeader className="bg-teal-50 border-b border-teal-100">
-                      <CardTitle className="flex items-center text-teal-800">
-                        <BarChart3 className="mr-2 h-5 w-5 text-teal-600" />
-                        Department Stats
-                      </CardTitle>
-                      <CardDescription>Faculty participation and wellness metrics</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <div className="grid grid-cols-2 gap-6 mb-6">
-                        <div className="bg-teal-50 rounded-lg p-4 text-center">
-                          <Users className="h-8 w-8 text-teal-600 mx-auto mb-2" />
-                          <p className="text-xl font-bold text-teal-900">{data.stats.facultyMembers}</p>
-                          <p className="text-xs text-teal-600">Registered Faculty</p>
-                        </div>
-                        
-                        <div className="bg-teal-50 rounded-lg p-4 text-center">
-                          <Clipboard className="h-8 w-8 text-teal-600 mx-auto mb-2" />
-                          <p className="text-xl font-bold text-teal-900">{data.stats.sessionsScheduled}</p>
-                          <p className="text-xs text-teal-600">Sessions Scheduled</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <p className="text-sm font-medium">Faculty Participation</p>
-                            <p className="text-sm font-bold text-teal-700">78%</p>
-                          </div>
-                          <div className="h-2 bg-teal-100 rounded-full">
-                            <div className="h-2 bg-teal-600 rounded-full w-[78%]"></div>
-                          </div>
-                          <p className="text-xs text-teal-400">Percentage of faculty participating in wellness programs</p>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <p className="text-sm font-medium">Staff Attendance Rate</p>
-                            <p className="text-sm font-bold text-teal-700">{data.stats.attendance}</p>
-                          </div>
-                          <div className="h-2 bg-teal-100 rounded-full">
-                            <div className="h-2 bg-teal-600 rounded-full w-[92%]"></div>
-                          </div>
-                          <p className="text-xs text-teal-400">Attendance rate for scheduled fitness sessions</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <Card className="md:col-span-2 bg-white border-teal-100 shadow-sm">
-                    <CardHeader className="bg-teal-50 border-b border-teal-100">
-                      <CardTitle className="flex items-center text-teal-800">
-                        <Calendar className="mr-2 h-5 w-5 text-teal-600" />
-                        Upcoming Activities
-                      </CardTitle>
-                      <CardDescription>Scheduled events and sessions</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        {data.activities.map((activity, index) => (
-                          <div key={index} className="p-4 rounded-lg border border-teal-100 bg-white hover:bg-teal-50 transition-colors">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="font-medium text-teal-900">{activity.title}</h4>
-                                <p className="text-sm text-teal-600">{activity.participants} participants</p>
-                              </div>
-                              <div className="bg-teal-100 text-teal-800 text-xs font-medium px-2 py-1 rounded">
-                                {activity.date.split(',')[0]}
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-4">
-                              <p className="text-sm text-teal-500">{activity.date}</p>
-                              <Button size="sm" variant="outline" className="border-teal-200 text-teal-700 hover:bg-teal-100">
-                                Details
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Completed Activities</p>
+                    <p className="text-teal-700 font-bold">{stats?.completedActivities || 0}</p>
+                  </div>
                   
-                  <Card className="bg-white border-teal-100 shadow-sm">
-                    <CardHeader className="bg-teal-50 border-b border-teal-100">
-                      <CardTitle className="flex items-center text-teal-800">
-                        <Bell className="mr-2 h-5 w-5 text-teal-600" />
-                        Department Updates
-                      </CardTitle>
-                      <CardDescription>Recent announcements</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        {[
-                          { title: "Wellness Week Announcement", time: "2 hours ago" },
-                          { title: "New Fitness Equipment Arrived", time: "Yesterday" },
-                          { title: "Faculty Yoga Session Reminder", time: "2 days ago" },
-                          { title: "Departmental Fitness Challenge", time: "3 days ago" }
-                        ].map((update, index) => (
-                          <div key={index} className="flex items-center gap-3 py-2 border-b border-teal-50 last:border-0">
-                            <div className="w-2 h-2 rounded-full bg-teal-500"></div>
-                            <div>
-                              <p className="text-sm font-medium">{update.title}</p>
-                              <p className="text-xs text-teal-400">{update.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div>
+                    <p className="text-sm font-medium mb-1">Incomplete Activities</p>
+                    <p className="text-teal-700 font-bold">{stats?.incompleteActivities || 0}</p>
+                  </div>
                 </div>
-              </>
-            )}
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="faculty">
             <Card>
               <CardHeader className="bg-teal-50">
-                <CardTitle>Faculty Fitness</CardTitle>
-                <CardDescription>Manage faculty wellness programs</CardDescription>
+                <CardTitle>Faculty</CardTitle>
+                <CardDescription>Manage your faculty members</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <Users className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Faculty Fitness Programs</h3>
-                  <p className="text-teal-600">
-                    Create and manage wellness programs for faculty members.
-                  </p>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Faculty Members</h3>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start text-teal-700 hover:bg-teal-100"
+                      onClick={() => setIsAddFacultyModalOpen(true)}
+                    >
+                      <Users className="mr-2 h-5 w-5" />
+                      Add Faculty Member
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Array.isArray(facultyMembers) && facultyMembers.length > 0 ? (
+                      facultyMembers.map((member) => (
+                        <div key={member.id} className="border border-teal-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between mb-2">
+                            <h4 className="font-medium">{member.name}</h4>
+                            <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
+                              {member.position}
+                            </span>
+                          </div>
+                          <p className="text-sm text-teal-600 mb-3">
+                            <span className="font-medium">Email:</span> {member.email}
+                          </p>
+                          <p className="text-sm text-teal-600 mb-3">
+                            <span className="font-medium">Department:</span> {member.department}
+                          </p>
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-8 text-teal-700 hover:bg-teal-100"
+                              onClick={() => handleEditActivity(member)}
+                            >
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-2 text-center py-12 text-teal-500 border border-dashed border-teal-200 rounded-lg">
+                        No faculty members added. Click "Add Faculty Member" to add one.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -422,81 +963,68 @@ const StaffDashboard = () => {
           <TabsContent value="schedule">
             <Card>
               <CardHeader className="bg-teal-50">
-                <CardTitle>Department Schedule</CardTitle>
-                <CardDescription>Manage fitness sessions and events</CardDescription>
+                <CardTitle>Schedule</CardTitle>
+                <CardDescription>Manage your activities</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <Calendar className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Department Schedule</h3>
-                  <p className="text-teal-600">
-                    Schedule and manage fitness sessions and wellness events.
-                  </p>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Activities</h3>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start text-teal-700 hover:bg-teal-100"
+                      onClick={() => setIsScheduleActivityModalOpen(true)}
+                    >
+                      <Calendar className="mr-2 h-5 w-5" />
+                      Schedule New Activity
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Array.isArray(activities) && activities.length > 0 ? (
+                      activities.map((activity) => (
+                        <div key={activity.id} className="border border-teal-100 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between mb-2">
+                            <h4 className="font-medium">{activity.title}</h4>
+                          </div>
+                          <p className="text-sm text-teal-600 mb-3">
+                            <span className="font-medium">Date:</span> {activity.date || 'N/A'}
+                          </p>
+                          <p className="text-sm text-teal-600 mb-3">
+                            <span className="font-medium">Time:</span> {activity.time || 'N/A'}
+                          </p>
+                          <p className="text-sm text-teal-600 mb-4">
+                            <span className="font-medium">Location:</span> {activity.location || 'N/A'}
+                          </p>
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-8 text-teal-700 hover:bg-teal-100"
+                              onClick={() => handleEditActivity(activity)}
+                            >
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-2 text-center py-12 text-teal-500 border border-dashed border-teal-200 rounded-lg">
+                        No activities scheduled. Click "Schedule New Activity" to add one.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="videos">
-            <TrainingVideoList />
+            <VideoSection />
           </TabsContent>
           
           <TabsContent value="diet">
-            <DietPlanList />
-          </TabsContent>
-          
-          <TabsContent value="wellness">
-            <Card>
-              <CardHeader className="bg-teal-50">
-                <CardTitle>Wellness Program</CardTitle>
-                <CardDescription>Manage your department's wellness initiatives</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <HeartPulse className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Wellness Program</h3>
-                  <p className="text-teal-600">
-                    Create and manage comprehensive wellness initiatives for your department.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="records">
-            <Card>
-              <CardHeader className="bg-teal-50">
-                <CardTitle>Fitness Records</CardTitle>
-                <CardDescription>Manage departmental fitness data</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <FileSpreadsheet className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Fitness Records</h3>
-                  <p className="text-teal-600">
-                    Track and manage fitness records and participation data.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="resources">
-            <Card>
-              <CardHeader className="bg-teal-50">
-                <CardTitle>Resources</CardTitle>
-                <CardDescription>Access fitness and wellness resources</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <BookOpen className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Resources</h3>
-                  <p className="text-teal-600">
-                    Access educational materials and resources for departmental wellness.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <DietPlanSection />
           </TabsContent>
           
           <TabsContent value="settings">
@@ -506,12 +1034,33 @@ const StaffDashboard = () => {
                 <CardDescription>Manage your account settings</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="text-center p-8">
-                  <Settings className="h-12 w-12 mx-auto text-teal-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Account Settings</h3>
-                  <p className="text-teal-600">
-                    Update your profile, preferences, and notification settings.
-                  </p>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Account Settings</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-sm font-medium mb-1">Email Notifications</p>
+                        <div className="flex items-center">
+                          <input type="checkbox" id="email-notifications" className="mr-2" />
+                          <label htmlFor="email-notifications" className="text-sm">Receive email notifications</label>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Two-Factor Authentication</p>
+                        <div className="flex items-center">
+                          <input type="checkbox" id="2fa" className="mr-2" />
+                          <label htmlFor="2fa" className="text-sm">Enable two-factor authentication</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-teal-100">
+                    <h3 className="text-lg font-medium mb-4">Profile Settings</h3>
+                    <Button variant="outline" className="border-teal-200 text-teal-700 hover:bg-teal-100">
+                      Edit Profile
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -520,6 +1069,129 @@ const StaffDashboard = () => {
       </div>
     </div>
   );
+};
+
+// Component to fetch and display training videos
+const VideoSection = () => {
+  const [videos, setVideos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        console.log("Fetching training videos...");
+        setIsLoading(true);
+        const data = await staffService.getVideos();
+        console.log("Training videos data:", data);
+        // Ensure data is properly formatted for our component
+        const formattedVideos = Array.isArray(data) ? data.map(video => ({
+          id: video.id,
+          title: video.title,
+          description: video.description || "",
+          video_url: video.url || "", // Handle different field name from backend
+          category: video.category || "General",
+          created_at: video.created_at || new Date().toISOString()
+        })) : [];
+        
+        setVideos(formattedVideos);
+      } catch (err: any) {
+        console.error("Error fetching training videos:", err);
+        let errorMessage = "Failed to load training videos";
+        
+        if (err.response) {
+          errorMessage = `Server error (${err.response.status}): ${err.response.data?.error || err.message}`;
+        } else if (err.request) {
+          errorMessage = "Could not connect to the server. Please check if the backend is running.";
+        } else {
+          errorMessage = `Error: ${err.message}`;
+        }
+        
+        setError(errorMessage);
+        toast.error(errorMessage);
+        // Set videos as empty array on error
+        setVideos([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded mb-6">
+        <p className="font-medium">{error}</p>
+      </div>
+    );
+  }
+
+  return <TrainingVideoList videos={videos} isLoading={isLoading} />;
+};
+
+// Component to fetch and display diet plans
+const DietPlanSection = () => {
+  const [dietPlans, setDietPlans] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchDietPlans = async () => {
+      try {
+        console.log("Fetching diet plans...");
+        setIsLoading(true);
+        const data = await staffService.getDietPlans();
+        console.log("Diet plans data:", data);
+        
+        // Ensure data is properly formatted for our component
+        const formattedDietPlans = Array.isArray(data) ? data.map(plan => ({
+          id: plan.id,
+          title: plan.title,
+          description: plan.description || "",
+          calories: plan.calories || 2000, // Provide defaults for macro values
+          protein: plan.protein || 140,
+          carbs: plan.carbs || 200,
+          fat: plan.fat || 65,
+          assigned_by: plan.created_by || "Staff Nutritionist",
+          status: "active", // Default status for staff view
+          created_at: plan.created_at || new Date().toISOString()
+        })) : [];
+        
+        setDietPlans(formattedDietPlans);
+      } catch (err: any) {
+        console.error("Error fetching diet plans:", err);
+        let errorMessage = "Failed to load diet plans";
+        
+        if (err.response) {
+          errorMessage = `Server error (${err.response.status}): ${err.response.data?.error || err.message}`;
+        } else if (err.request) {
+          errorMessage = "Could not connect to the server. Please check if the backend is running.";
+        } else {
+          errorMessage = `Error: ${err.message}`;
+        }
+        
+        setError(errorMessage);
+        toast.error(errorMessage);
+        // Set diet plans as empty array on error
+        setDietPlans([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDietPlans();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded mb-6">
+        <p className="font-medium">{error}</p>
+      </div>
+    );
+  }
+
+  return <DietPlanList dietPlans={dietPlans} isLoading={isLoading} />;
 };
 
 export default StaffDashboard;

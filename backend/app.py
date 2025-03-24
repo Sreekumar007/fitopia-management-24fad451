@@ -3,13 +3,12 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
-from database import db
+from models import db, User, StudentProfile, Trainer
 from routes.auth_routes import auth_bp
 from routes.student_routes import student_bp
 from routes.staff_routes import staff_bp
 from routes.admin_routes import admin_bp
 from routes.trainer_routes import trainer_bp
-from models import User
 import traceback
 import logging
 from datetime import datetime
@@ -31,14 +30,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# For development only - allow all origins (replace with specific origins in production)
+# Configure CORS with simpler approach
 CORS(app, 
-     resources={r"/api/*": {
-         "origins": "*",  # Allow all origins during development
-         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         "allow_headers": ["Content-Type", "Authorization"],
-         "expose_headers": ["Content-Type", "Authorization"]
-     }})
+    origins=["http://localhost:8081", "http://127.0.0.1:8081"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization"],
+    supports_credentials=True
+)
 
 # Request logger
 @app.before_request
@@ -134,6 +133,107 @@ app.logger.addHandler(file_handler)
 
 app.logger.setLevel(logging.INFO)
 app.logger.info('FitWell Gym startup')
+
+# User creation helper functions
+def create_default_admin():
+    # Check if admin exists
+    admin = User.query.filter_by(email="admin@fitwell.com").first()
+    if not admin:
+        admin = User(
+            name="Admin User",
+            email="admin@fitwell.com",
+            role="admin",
+            created_at=datetime.utcnow()
+        )
+        admin.set_password("admin")
+        db.session.add(admin)
+        db.session.commit()
+        print("Created default admin user")
+    return admin
+
+def create_test_student():
+    # Check if test student exists
+    student = User.query.filter_by(email="student@fitwell.com").first()
+    if not student:
+        student = User(
+            name="Test Student",
+            email="student@fitwell.com",
+            role="student",
+            gender="Male",
+            blood_group="A+",
+            height=175,
+            weight=70,
+            created_at=datetime.utcnow()
+        )
+        student.set_password("student")
+        db.session.add(student)
+        db.session.flush()
+        
+        # Create student profile
+        profile = StudentProfile(
+            user_id=student.id,
+            age=20,
+            fitness_goal="Stay fit and healthy",
+            medical_conditions="None",
+            admission_date=datetime.utcnow(),
+            department="Computer Science",
+            membership_status="active"
+        )
+        db.session.add(profile)
+        db.session.commit()
+        print("Created test student user")
+    return student
+
+def create_test_staff():
+    # Check if test staff exists
+    staff = User.query.filter_by(email="staff@fitwell.com").first()
+    if not staff:
+        staff = User(
+            name="Staff Member",
+            email="staff@fitwell.com",
+            role="staff",
+            gender="Female",
+            blood_group="B+",
+            height=165,
+            weight=60,
+            created_at=datetime.utcnow()
+        )
+        staff.set_password("staff")
+        db.session.add(staff)
+        db.session.commit()
+        print("Created test staff user")
+    return staff
+
+def create_test_trainer():
+    # Check if test trainer exists
+    trainer = User.query.filter_by(email="trainer@fitwell.com").first()
+    if not trainer:
+        trainer = User(
+            name="Fitness Trainer",
+            email="trainer@fitwell.com",
+            role="trainer",
+            gender="Male",
+            blood_group="O+",
+            height=180,
+            weight=75,
+            created_at=datetime.utcnow()
+        )
+        trainer.set_password("trainer")
+        db.session.add(trainer)
+        db.session.flush()
+        
+        # Create trainer profile
+        profile = Trainer(
+            user_id=trainer.id,
+            specialization="Weight Training",
+            experience_years=5,
+            bio="Experienced fitness trainer with focus on strength training",
+            schedule="Monday-Friday, 9 AM - 5 PM"
+        )
+        db.session.add(profile)
+        db.session.commit()
+        print("Created test trainer user")
+    return trainer
 
 # Initialize database function
 def init_database():
