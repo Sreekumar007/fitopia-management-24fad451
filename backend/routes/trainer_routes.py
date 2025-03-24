@@ -588,8 +588,17 @@ def manage_schedule():
             # Get schedules created by this trainer
             trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
             
+            # Auto-create trainer profile if it doesn't exist
             if not trainer:
-                return jsonify({'error': 'Trainer profile not found'}), 404
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
+                print(f"Created trainer profile for user {current_user['id']}")
                 
             # Get all schedules associated with this trainer
             schedules = Schedule.query.filter_by(trainer_id=trainer.id).all()
@@ -628,10 +637,17 @@ def manage_schedule():
             if not student:
                 return jsonify({'error': 'Student not found'}), 404
                 
-            # Get the trainer ID
+            # Get the trainer ID - auto-create if needed
             trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
             if not trainer:
-                return jsonify({'error': 'Trainer profile not found'}), 404
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
                 
             # Parse the scheduled time
             try:
@@ -671,9 +687,18 @@ def manage_schedule():
             if not schedule:
                 return jsonify({'error': 'Schedule not found'}), 404
                 
-            # Get the trainer ID
+            # Get the trainer ID - auto-create if needed
             trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
-            if not trainer or schedule.trainer_id != trainer.id:
+            if not trainer:
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
+            elif schedule.trainer_id != trainer.id:
                 return jsonify({'error': 'Not authorized to update this schedule'}), 403
                 
             # Update fields
@@ -706,9 +731,18 @@ def manage_schedule():
             if not schedule:
                 return jsonify({'error': 'Schedule not found'}), 404
                 
-            # Get the trainer ID
+            # Get or create the trainer
             trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
-            if not trainer or schedule.trainer_id != trainer.id:
+            if not trainer:
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
+            elif schedule.trainer_id != trainer.id:
                 return jsonify({'error': 'Not authorized to delete this schedule'}), 403
                 
             db.session.delete(schedule)
@@ -763,5 +797,51 @@ def get_students_for_assignment():
         return jsonify(result), 200
     except Exception as e:
         print(f"Get students for assignment error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@trainer_bp.route('/requests', methods=['GET'])
+@trainer_required
+def get_trainer_requests():
+    try:
+        current_user = get_jwt_identity()
+        
+        # In a real app, this would retrieve membership requests, workout plan change requests, etc.
+        # For now, just return mock data for the dashboard
+        result = {
+            'pending': 7,
+            'approved': 18,
+            'rejected': 3,
+            'requests': [
+                {
+                    'id': 1,
+                    'type': 'membership',
+                    'student_name': 'Alex Johnson',
+                    'details': 'New membership request',
+                    'status': 'pending',
+                    'created_at': datetime.utcnow().isoformat()
+                },
+                {
+                    'id': 2,
+                    'type': 'workout_change',
+                    'student_name': 'Maria Garcia',
+                    'details': 'Requesting change to workout plan due to injury',
+                    'status': 'pending',
+                    'created_at': datetime.utcnow().isoformat()
+                },
+                {
+                    'id': 3,
+                    'type': 'diet_modification',
+                    'student_name': 'James Wilson',
+                    'details': 'Requesting diet plan modification',
+                    'status': 'pending',
+                    'created_at': datetime.utcnow().isoformat()
+                }
+            ]
+        }
+        
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"Get trainer requests error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500

@@ -252,4 +252,15 @@ export const getStudentsForScheduling = async () => {
     console.error('Error fetching students for scheduling:', error);
     throw error;
   }
+};
+
+// Trainer requests
+export const getTrainerRequests = async () => {
+  try {
+    const response = await apiClient.get('/trainer/requests');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trainer requests:', error);
+    throw error;
+  }
 }; 

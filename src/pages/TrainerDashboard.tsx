@@ -14,6 +14,7 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
   Video, 
@@ -33,37 +34,58 @@ import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
 import ScheduleManager from "@/components/trainer/ScheduleManager";
 import DietPlanManager from "@/components/trainer/DietPlanManager";
+import { 
+  getTrainerProfile, 
+  getStudents, 
+  getTrainerSchedules, 
+  getTrainerVideos, 
+  getWorkoutPlans, 
+  getDietPlans,
+  getTrainerRequests
+} from "@/services/trainerService";
 
-// Mock data for trainer dashboard
-const mockTrainerData = {
+// Dashboard data interface
+interface DashboardData {
   members: {
-    total: 125,
-    students: 98,
-    staff: 27,
-    active: 78
-  },
+    total: number;
+    students: number;
+    staff: number;
+    active: number;
+  };
   sessions: {
-    today: 8,
-    upcoming: 24,
-    completed: 156
-  },
+    today: number;
+    upcoming: number;
+    completed: number;
+  };
   videos: {
-    total: 45,
-    popular: 12
-  },
+    total: number;
+    popular: number;
+  };
   requests: {
-    pending: 7,
-    approved: 18,
-    rejected: 3
-  }
-};
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+}
 
 const TrainerDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
-  const [data, setData] = useState(mockTrainerData);
+  const [data, setData] = useState<DashboardData>({
+    members: { total: 0, students: 0, staff: 0, active: 0 },
+    sessions: { today: 0, upcoming: 0, completed: 0 },
+    videos: { total: 0, popular: 0 },
+    requests: { pending: 0, approved: 0, rejected: 0 }
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [workoutPlans, setWorkoutPlans] = useState([]);
+  const [dietPlans, setDietPlans] = useState([]);
+  const [requestData, setRequestData] = useState([]);
 
   useEffect(() => {
     // Check if user is trainer
@@ -73,14 +95,93 @@ const TrainerDashboard = () => {
       return;
     }
 
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setData(mockTrainerData);
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    loadDashboardData();
   }, [navigate, user]);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load profile data
+      const profileData = await getTrainerProfile();
+      setProfile(profileData);
+      
+      // Load students data
+      const studentsData = await getStudents();
+      setStudents(studentsData);
+      
+      // Load schedules
+      const schedulesData = await getTrainerSchedules();
+      setSchedules(schedulesData);
+      
+      // Load videos
+      const videosData = await getTrainerVideos();
+      setVideos(videosData);
+      
+      // Load workout plans
+      const workoutPlansData = await getWorkoutPlans();
+      setWorkoutPlans(workoutPlansData);
+      
+      // Load diet plans
+      const dietPlansData = await getDietPlans();
+      setDietPlans(dietPlansData);
+      
+      // Load requests data
+      const requestsData = await getTrainerRequests();
+      setRequestData(requestsData.requests || []);
+      
+      // Calculate dashboard metrics
+      const staffCount = studentsData.filter(s => s.role === 'staff').length;
+      const studentCount = studentsData.filter(s => s.role === 'student').length;
+      const totalMembers = staffCount + studentCount;
+      const activeMembers = Math.round(totalMembers * 0.65); // Estimate active members
+      
+      // Get today's date in YYYY-MM-DD format for comparison
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Count today's sessions
+      const todaySessions = schedulesData.filter(s => 
+        s.scheduled_time.startsWith(today)
+      ).length;
+      
+      // Count upcoming sessions (future dates)
+      const upcomingSessions = schedulesData.filter(s => 
+        s.scheduled_time > today
+      ).length;
+      
+      // Assume completed sessions
+      const completedSessions = Math.max(0, schedulesData.length - todaySessions - upcomingSessions);
+      
+      // Update dashboard data
+      setData({
+        members: {
+          total: totalMembers,
+          students: studentCount,
+          staff: staffCount,
+          active: activeMembers
+        },
+        sessions: {
+          today: todaySessions,
+          upcoming: upcomingSessions,
+          completed: completedSessions
+        },
+        videos: {
+          total: videosData.length,
+          popular: Math.min(videosData.length, 5) // Assume top 5 are popular
+        },
+        requests: {
+          pending: requestsData.pending,
+          approved: requestsData.approved,
+          rejected: requestsData.rejected
+        }
+      });
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -295,23 +396,32 @@ const TrainerDashboard = () => {
                     </CardHeader>
                     <CardContent className="pt-4">
                       <div className="space-y-4">
-                        {[
-                          { name: "John Doe", time: "Today, 10:00 AM", type: "Weight Training" },
-                          { name: "Jane Smith", time: "Today, 11:30 AM", type: "Cardio" },
-                          { name: "Mike Johnson", time: "Today, 2:15 PM", type: "Yoga" },
-                          { name: "Sarah Williams", time: "Tomorrow, 9:00 AM", type: "HIIT" }
-                        ].map((session, index) => (
-                          <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
-                              {session.name.charAt(0)}
-                            </div>
-                            <div className="flex-grow">
-                              <p className="font-medium">{session.name}</p>
-                              <p className="text-sm text-slate-500">{session.time} • {session.type}</p>
-                            </div>
-                            <Button size="sm" variant="outline">Details</Button>
+                        {schedules.length === 0 ? (
+                          <div className="text-center p-4 text-gray-500">
+                            <p>No upcoming sessions scheduled.</p>
                           </div>
-                        ))}
+                        ) : (
+                          schedules.slice(0, 4).map((session, index) => (
+                            <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+                                {session.student_name?.charAt(0) || 'S'}
+                              </div>
+                              <div className="flex-grow">
+                                <p className="font-medium">{session.student_name}</p>
+                                <p className="text-sm text-slate-500">
+                                  {new Date(session.scheduled_time).toLocaleString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })} • {session.title}
+                                </p>
+                              </div>
+                              <Button size="sm" variant="outline">Details</Button>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -391,13 +501,31 @@ const TrainerDashboard = () => {
                 <CardDescription>View and manage your assigned members</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <Users className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Member Management</h3>
-                  <p className="text-slate-500">
-                    View member profiles, track their progress, and manage their workout plans.
-                  </p>
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800" />
+                  </div>
+                ) : students.length === 0 ? (
+                  <div className="text-center p-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                    <p>No members found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {students.map((student, index) => (
+                      <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+                          {student.name?.charAt(0) || 'S'}
+                        </div>
+                        <div className="flex-grow">
+                          <p className="font-medium">{student.name}</p>
+                          <p className="text-sm text-slate-500">{student.email} • {student.role}</p>
+                        </div>
+                        <Button size="sm" variant="outline">View</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -421,13 +549,34 @@ const TrainerDashboard = () => {
                 <CardDescription>Create and manage workout plans for members</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <Dumbbell className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Workout Plans</h3>
-                  <p className="text-slate-500">
-                    Create personalized workout plans for members and track their progress.
-                  </p>
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800" />
+                  </div>
+                ) : workoutPlans.length === 0 ? (
+                  <div className="text-center p-8 text-gray-500">
+                    <Dumbbell className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                    <p>No workout plans found. Create your first workout plan.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {workoutPlans.map((plan, index) => (
+                      <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+                          <Dumbbell className="h-5 w-5" />
+                        </div>
+                        <div className="flex-grow">
+                          <p className="font-medium">{plan.title}</p>
+                          <p className="text-sm text-slate-500">
+                            Assigned to: {plan.assigned_to?.name || 'Unknown'} • 
+                            Created: {new Date(plan.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline">View</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -439,13 +588,36 @@ const TrainerDashboard = () => {
                 <CardDescription>Manage and upload training videos</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <Video className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Training Videos</h3>
-                  <p className="text-slate-500">
-                    Upload and manage training videos for members to follow.
-                  </p>
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800" />
+                  </div>
+                ) : videos.length === 0 ? (
+                  <div className="text-center p-8 text-gray-500">
+                    <Video className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                    <p>No training videos found. Upload your first video.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {videos.map((video, index) => (
+                      <div key={index} className="bg-white rounded-lg overflow-hidden shadow-sm border border-slate-200">
+                        <div className="aspect-video bg-slate-100 flex items-center justify-center">
+                          <Video className="h-10 w-10 text-slate-400" />
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-medium text-slate-800">{video.title}</h3>
+                          <p className="text-sm text-slate-500 mt-1">{video.category}</p>
+                          <div className="flex justify-between items-center mt-3">
+                            <span className="text-xs text-slate-500">
+                              {new Date(video.created_at).toLocaleDateString()}
+                            </span>
+                            <Button size="sm" variant="outline">View</Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -487,13 +659,46 @@ const TrainerDashboard = () => {
                 <CardDescription>View and manage pending member requests</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
-                <div className="text-center p-8">
-                  <ClipboardList className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Pending Requests</h3>
-                  <p className="text-slate-500">
-                    Review and approve new membership requests and training plan changes.
-                  </p>
-                </div>
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800" />
+                  </div>
+                ) : requestData.length === 0 ? (
+                  <div className="text-center p-8 text-gray-500">
+                    <ClipboardList className="h-12 w-12 mx-auto text-slate-400 mb-4" />
+                    <p>No pending requests.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {requestData.map((request, index) => (
+                      <div key={index} className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                        <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+                          <ClipboardList className="h-5 w-5" />
+                        </div>
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{request.student_name}</h3>
+                            <Badge className="bg-amber-100 text-amber-800">
+                              {request.type.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-500 mt-1">{request.details}</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {new Date(request.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-50">
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
