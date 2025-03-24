@@ -66,13 +66,13 @@ api.interceptors.response.use(
 export const authService = {
   login: async (email: string, password: string, role?: string): Promise<AuthResponse> => {
     const data = role ? { email, password, role } : { email, password };
-    return api.post<AuthResponse>("/auth/login", data);
+    return api.post("/auth/login", data) as Promise<AuthResponse>;
   },
   register: async (userData: any): Promise<AuthResponse> => {
-    return api.post<AuthResponse>("/auth/register", userData);
+    return api.post("/auth/register", userData) as Promise<AuthResponse>;
   },
   verifyToken: async (): Promise<TokenVerificationResponse> => {
-    return api.get<TokenVerificationResponse>("/auth/verify");
+    return api.get("/auth/verify") as Promise<TokenVerificationResponse>;
   }
 };
 
