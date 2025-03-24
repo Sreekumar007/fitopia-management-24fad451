@@ -1,7 +1,36 @@
-
 import axios from "axios";
 
 const API_URL = "http://localhost:5000/api";
+
+// Define response types for better type safety
+export interface AuthResponse {
+  access_token: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: "admin" | "staff" | "trainer" | "student";
+    gender?: string;
+    blood_group?: string;
+    height?: number;
+    weight?: number;
+  };
+  message?: string;
+}
+
+export interface TokenVerificationResponse {
+  valid: boolean;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: "admin" | "staff" | "trainer" | "student";
+    gender?: string;
+    blood_group?: string;
+    height?: number;
+    weight?: number;
+  };
+}
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -36,13 +65,13 @@ api.interceptors.response.use(
 export const authService = {
   login: async (email: string, password: string, role?: string) => {
     const data = role ? { email, password, role } : { email, password };
-    return api.post("/auth/login", data);
+    return api.post<AuthResponse>("/auth/login", data);
   },
   register: async (userData: any) => {
-    return api.post("/auth/register", userData);
+    return api.post<AuthResponse>("/auth/register", userData);
   },
   verifyToken: async () => {
-    return api.get("/auth/verify");
+    return api.get<TokenVerificationResponse>("/auth/verify");
   }
 };
 
