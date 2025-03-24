@@ -89,22 +89,26 @@ export const getStudents = async () => {
 };
 
 // Training videos
-export const getTrainerVideos = async () => {
+export const getTrainerVideos = async (): Promise<any[]> => {
   try {
     const response = await apiClient.get('/trainer/videos');
     return response.data;
   } catch (error) {
-    console.error('Error fetching training videos:', error);
+    console.error('Error fetching trainer videos:', error);
     throw error;
   }
 };
 
-export const uploadTrainingVideo = async (videoData) => {
+export const uploadTrainerVideo = async (videoData: FormData): Promise<any> => {
   try {
-    const response = await apiClient.post('/trainer/videos', videoData);
+    const response = await apiClient.post('/trainer/videos', videoData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
-    console.error('Error uploading training video:', error);
+    console.error('Error uploading video:', error);
     throw error;
   }
 };
@@ -261,6 +265,48 @@ export const getTrainerRequests = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching trainer requests:', error);
+    throw error;
+  }
+};
+
+// Workout session management
+export const getTrainerWorkoutSessions = async (studentId?: number): Promise<any[]> => {
+  try {
+    const params = studentId ? `?student_id=${studentId}` : '';
+    const response = await apiClient.get(`/trainer/workout-sessions${params}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching workout sessions:', error);
+    throw error;
+  }
+};
+
+export const createWorkoutSession = async (sessionData: any): Promise<any> => {
+  try {
+    const response = await apiClient.post('/trainer/workout-sessions', sessionData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating workout session:', error);
+    throw error;
+  }
+};
+
+export const updateWorkoutSession = async (sessionData: any): Promise<any> => {
+  try {
+    const response = await apiClient.put('/trainer/workout-sessions', sessionData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating workout session:', error);
+    throw error;
+  }
+};
+
+export const deleteWorkoutSession = async (sessionId: number): Promise<any> => {
+  try {
+    const response = await apiClient.delete(`/trainer/workout-sessions?session_id=${sessionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting workout session:', error);
     throw error;
   }
 }; 

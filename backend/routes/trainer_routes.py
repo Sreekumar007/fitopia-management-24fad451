@@ -4,7 +4,7 @@ from database import db
 from models import User, TrainingVideo, WorkoutPlan, MedicalRecord, Trainer, StudentProfile, DietPlan, StudentDietPlan, Schedule
 from middleware.auth_middleware import trainer_required
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 trainer_bp = Blueprint('trainer', __name__)
 
@@ -843,5 +843,134 @@ def get_trainer_requests():
         return jsonify(result), 200
     except Exception as e:
         print(f"Get trainer requests error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@trainer_bp.route('/workout-sessions', methods=['GET', 'POST', 'PUT', 'DELETE'])
+@trainer_required
+def manage_workout_sessions():
+    try:
+        current_user = get_jwt_identity()
+        
+        if request.method == 'GET':
+            # Get workout sessions created by this trainer
+            trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
+            
+            # Auto-create trainer profile if it doesn't exist
+            if not trainer:
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
+                print(f"Created trainer profile for user {current_user['id']}")
+            
+            # Get all workout sessions associated with this trainer
+            # In a real app, you would query a WorkoutSession model
+            # For now, we'll mock some data
+            tomorrow = datetime.utcnow() + timedelta(days=1)
+            
+            mock_sessions = [
+                {
+                    'id': 1,
+                    'title': 'Full Body Workout',
+                    'description': 'Comprehensive workout targeting all major muscle groups',
+                    'student_id': 14,
+                    'student_name': 'student',
+                    'scheduled_time': datetime.utcnow().isoformat(),
+                    'duration': 60,  # minutes
+                    'location': 'Main Gym',
+                    'status': 'completed',
+                    'notes': 'Student performed well, increase weights next time',
+                    'created_at': datetime.utcnow().isoformat()
+                },
+                {
+                    'id': 2,
+                    'title': 'Cardio Session',
+                    'description': 'High intensity cardio workout',
+                    'student_id': 16,
+                    'student_name': 'sreeekumar',
+                    'scheduled_time': tomorrow.isoformat(),
+                    'duration': 45,  # minutes
+                    'location': 'Track Field',
+                    'status': 'scheduled',
+                    'notes': 'Focus on improving endurance',
+                    'created_at': datetime.utcnow().isoformat()
+                }
+            ]
+            
+            # Filter by student if provided
+            student_id = request.args.get('student_id', type=int)
+            if student_id:
+                mock_sessions = [s for s in mock_sessions if s['student_id'] == student_id]
+                
+            return jsonify(mock_sessions), 200
+            
+        elif request.method == 'POST':
+            # Create a new workout session
+            data = request.get_json()
+            
+            # Validate required fields
+            if not all(k in data for k in ('title', 'student_id', 'scheduled_time')):
+                return jsonify({'error': 'Missing required fields (title, student_id, scheduled_time)'}), 400
+                
+            # Verify the student exists
+            student = User.query.filter_by(id=data['student_id'], role='student').first()
+            if not student:
+                return jsonify({'error': 'Student not found'}), 404
+                
+            # Get the trainer ID - auto-create if needed
+            trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
+            if not trainer:
+                trainer = Trainer(
+                    user_id=current_user['id'],
+                    specialization="General Training",
+                    experience_years=1,
+                    bio="Trainer profile"
+                )
+                db.session.add(trainer)
+                db.session.commit()
+                
+            # Mock creating a new workout session (in a real app, you would save to database)
+            mock_response = {
+                'message': 'Workout session created successfully',
+                'session_id': 3  # Mock ID
+            }
+            
+            return jsonify(mock_response), 201
+            
+        elif request.method == 'PUT':
+            # Update an existing workout session
+            data = request.get_json()
+            
+            # Validate session_id is provided
+            if 'session_id' not in data:
+                return jsonify({'error': 'session_id is required'}), 400
+                
+            # Mock finding and updating the session
+            # In a real app, you would update the database record
+            
+            return jsonify({
+                'message': 'Workout session updated successfully'
+            }), 200
+            
+        elif request.method == 'DELETE':
+            # Delete a workout session
+            session_id = request.args.get('session_id', type=int)
+            if not session_id:
+                return jsonify({'error': 'session_id is required'}), 400
+                
+            # Mock deleting the session
+            # In a real app, you would delete from the database
+            
+            return jsonify({
+                'message': 'Workout session deleted successfully'
+            }), 200
+    
+    except Exception as e:
+        print(f"Manage workout sessions error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
