@@ -23,7 +23,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add a response interceptor to handle common errors
+// Add a response interceptor to handle common errors and directly return data
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {

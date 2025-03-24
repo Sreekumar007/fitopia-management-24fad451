@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import api, { authService } from "@/services/api";
@@ -123,7 +124,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const response = await authService.register(userData);
         
-        if (response.user && response.access_token) {
+        // Fixed: Access the properties from response data
+        if (response && response.user && response.access_token) {
           login(response.access_token, response.user);
         }
       } catch (error) {
@@ -154,7 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const response = await authService.verifyToken();
         
-        if (response.valid) {
+        // Fixed: Access the properties from response data
+        if (response && response.valid) {
           // Token is valid, update user if needed
           if (response.user) {
             setUser(response.user);
