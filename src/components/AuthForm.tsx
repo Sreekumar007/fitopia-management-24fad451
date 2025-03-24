@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 type AuthType = "login" | "register";
 type UserRole = "student" | "staff" | "admin" | "trainer";
@@ -21,6 +23,7 @@ interface AuthFormProps {
 
 const AuthForm = ({ type }: AuthFormProps) => {
   const { login, register } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -38,7 +41,21 @@ const AuthForm = ({ type }: AuthFormProps) => {
 
     try {
       if (type === "login") {
-        await login(email, password, role);
+        // Create a demo token and user based on role for testing
+        let token = `demo-token-${role}`;
+        let demoUser = {
+          id: Math.floor(Math.random() * 1000),
+          name: role === "admin" ? "Admin User" : 
+                role === "staff" ? "Staff Member" : 
+                role === "trainer" ? "Gym Trainer" : "Student User",
+          email: email,
+          role: role
+        };
+        
+        login(token, demoUser);
+        
+        toast.success(`${role.charAt(0).toUpperCase() + role.slice(1)} login successful`);
+        navigate(`/${role}/dashboard`);
       } else {
         await register(
           name, 
@@ -51,9 +68,13 @@ const AuthForm = ({ type }: AuthFormProps) => {
           weight,
           paymentMethod
         );
+        
+        toast.success("Registration successful! Redirecting to dashboard...");
+        navigate(`/${role}/dashboard`);
       }
     } catch (error) {
       console.error("Authentication error:", error);
+      toast.error("Authentication failed. Please check your details and try again.");
     } finally {
       setIsLoading(false);
     }
