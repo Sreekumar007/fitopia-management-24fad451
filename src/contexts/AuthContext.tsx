@@ -1,26 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from "axios";
-import api, { authService, AuthResponse, TokenVerificationResponse } from "@/services/api";
+import api, { authService, AuthResponse, TokenVerificationResponse } from "../services/api";
 import { toast } from "sonner";
 
 const API_URL = "http://localhost:5000/api";
 
 interface User {
-  id: number;
-  name: string;
+  id: string | number;
   email: string;
-  role: "admin" | "staff" | "trainer" | "student";
-  gender?: string;
-  blood_group?: string;
-  height?: number;
-  weight?: number;
+  role: string;
+  [key: string]: any; // Allow for additional user properties
 }
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
+  token: string | null;
+  user: User | null;
+  isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
@@ -39,64 +35,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('token');
+  });
+  
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    
-    setIsLoading(false);
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    console.log("AuthProvider initialized with:", {
-      user,
-      hasToken: !!token,
-      storageToken: localStorage.getItem("token"),
-      storageUser: localStorage.getItem("user")
-    });
-  }, [user, token]);
-
-  const login = (newToken: string, newUser: User) => {
-    console.log("Setting login data:", { token: newToken, user: newUser }); // Debug log
-    
-    // Make sure user has expected structure
-    if (!newUser || !newUser.role) {
-      console.error("Invalid user data in login:", newUser);
-      toast.error("Invalid user data received"); 
-      return;
-    }
-    
-    // Store in state
+  const login = (newToken: string, userData: User) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(userData));
     setToken(newToken);
-    setUser(newUser);
-    
-    // Store in localStorage
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
-    
-    // Set default Authorization header for all future requests
-    axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
-    
-    console.log("Login completed successfully"); // Debug log
+    setUser(userData);
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    
-    // Clear default Authorization header
-    delete axios.defaults.headers.common["Authorization"];
   };
 
   const register = async (
@@ -203,28 +165,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        isAuthenticated: !!user && !!token, 
-        login,
-        logout,
-        checkAuth,
-        register
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    isAuthenticated: !!token,
+    token,
+    user,
+    isLoading,
+    login,
+    logout,
+    checkAuth,
+    register
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
