@@ -122,9 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       try {
+        // Since our API service now directly returns the response data (not the Axios response object),
+        // we can access the properties directly without response.data
         const response = await authService.register(userData);
         
-        // Fixed: Access the properties from response data
         if (response && response.user && response.access_token) {
           login(response.access_token, response.user);
         }
@@ -154,9 +155,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // In a real app, verify token with the backend
       try {
+        // Since our API service now directly returns the response data (not the Axios response object),
+        // we can access the properties directly without response.data
         const response = await authService.verifyToken();
         
-        // Fixed: Access the properties from response data
         if (response && response.valid) {
           // Token is valid, update user if needed
           if (response.user) {
