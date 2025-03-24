@@ -1,194 +1,208 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useNavigate, Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import axios from "axios";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
 
-type UserRole = "student" | "staff" | "trainer" | "admin";
+// Form schema
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("student");
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // For demo purposes, prefill with test student credentials
-  const fillTestCredentials = (roleType: UserRole) => {
-    if (roleType === "student") {
-      setEmail("student@fitwell.com");
-      setPassword("student");
-      setRole("student");
-      toast.info("Test student credentials filled");
-    } else if (roleType === "staff") {
-      setEmail("staff@fitwell.com");
-      setPassword("staff");
-      setRole("staff");
-      toast.info("Test staff credentials filled");
-    } else if (roleType === "trainer") {
-      setEmail("trainer@fitwell.com");
-      setPassword("trainer");
-      setRole("trainer");
-      toast.info("Test trainer credentials filled");
-    } else if (roleType === "admin") {
-      setEmail("admin@fitwell.com");
-      setPassword("admin");
-      setRole("admin");
-      toast.info("Test admin credentials filled");
-    }
-  };
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
     try {
-      await login(email, password, role);
+      console.log("Attempting login with:", values);
+      
+      // For demo/testing - hardcoded credentials
+      if (values.email === "admin@fitwell.com" && values.password === "admin") {
+        login("demo-token-admin", { id: 1, name: "Admin User", email: values.email, role: "admin" });
+        toast.success("Admin login successful");
+        navigate("/admin/dashboard");
+        return;
+      }
+      
+      if (values.email === "student@fitwell.com" && values.password === "student") {
+        login("demo-token-student", { id: 2, name: "Test Student", email: values.email, role: "student" });
+        toast.success("Student login successful");
+        navigate("/student/dashboard");
+        return;
+      }
+      
+      if (values.email === "staff@fitwell.com" && values.password === "staff") {
+        login("demo-token-staff", { id: 3, name: "Test Staff", email: values.email, role: "staff" });
+        toast.success("Staff login successful");
+        navigate("/staff/dashboard");
+        return;
+      }
+      
+      if (values.email === "trainer@fitwell.com" && values.password === "trainer") {
+        login("demo-token-trainer", { id: 4, name: "Test Trainer", email: values.email, role: "trainer" });
+        toast.success("Trainer login successful");
+        navigate("/trainer/dashboard");
+        return;
+      }
+      
+      // Actual API call
+      const response = await axios.post("http://localhost:5000/api/auth/login", values);
+      
+      // Handle successful login
+      const { token, user } = response.data;
+      login(token, user);
+      
+      toast.success("Login successful");
+      
+      // Redirect based on user role
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else if (user.role === "staff") {
+        navigate("/staff/dashboard");
+      } else if (user.role === "trainer") {
+        navigate("/trainer/dashboard");
+      } else {
+        navigate("/student/dashboard");
+      }
+      
     } catch (error) {
-      // Error is already handled in the login function
-      console.error("Login submission error:", error);
+      console.error("Login error:", error);
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <Helmet>
         <title>Login | FitWell Gym</title>
-        <meta name="description" content="Log in to your FitWell account and access your personalized fitness dashboard." />
+        <meta name="description" content="Login to your FitWell Gym account" />
       </Helmet>
       
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center py-16">
-        <div className="w-full max-w-md px-4">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-muted-foreground">
-              Log in to access your FitWell account
-            </p>
-          </div>
-          
-          <div className="bg-card border rounded-xl p-8 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="staff">College Staff</SelectItem>
-                    <SelectItem value="trainer">Trainer</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1 text-center bg-primary text-white rounded-t-lg">
+          <CardTitle className="text-2xl font-bold">FitWell Gym</CardTitle>
+          <CardDescription className="text-primary-foreground">
+            Login to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="your.email@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Logging in...
-                  </span>
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span className="ml-2">Logging in...</span>
+                  </div>
                 ) : (
-                  <span>Login</span>
+                  "Sign In"
                 )}
               </Button>
-              
-              <div className="text-center flex flex-wrap gap-2 justify-center">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => fillTestCredentials("student")}
-                >
-                  Student Demo
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => fillTestCredentials("staff")}
-                >
-                  Staff Demo
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => fillTestCredentials("trainer")}
-                >
-                  Trainer Demo
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => fillTestCredentials("admin")}
-                >
-                  Admin Demo
-                </Button>
-              </div>
             </form>
-            
-            <div className="mt-6 text-center text-sm">
-              <p className="text-muted-foreground">
-                Don't have an account?{" "}
-                <Link to="/register" className="text-primary font-medium hover:underline">
-                  Sign up
-                </Link>
-              </p>
+          </Form>
+          <div className="text-sm text-center mt-4">
+            <div className="text-gray-500">Demo Accounts:</div>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+              <div className="bg-gray-100 p-2 rounded">
+                <div className="font-semibold">Admin</div>
+                <div>admin@fitwell.com</div>
+                <div>Password: admin</div>
+              </div>
+              <div className="bg-gray-100 p-2 rounded">
+                <div className="font-semibold">Student</div>
+                <div>student@fitwell.com</div>
+                <div>Password: student</div>
+              </div>
+              <div className="bg-gray-100 p-2 rounded">
+                <div className="font-semibold">Staff</div>
+                <div>staff@fitwell.com</div>
+                <div>Password: staff</div>
+              </div>
+              <div className="bg-gray-100 p-2 rounded">
+                <div className="font-semibold">Trainer</div>
+                <div>trainer@fitwell.com</div>
+                <div>Password: trainer</div>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-      
-      <Footer />
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-muted-foreground text-center">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-primary hover:underline">
+              Register
+            </Link>
+          </div>
+          <div className="text-sm text-center">
+            <Link to="/admin/login" className="text-primary hover:underline">
+              Admin Login
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
