@@ -23,19 +23,26 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Add a response interceptor to handle common errors
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    console.error("API Error:", error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
 // Auth services
 export const authService = {
-  login: async (email: string, password: string) => {
-    const response = await api.post("/auth/login", { email, password });
-    return response.data;
+  login: async (email: string, password: string, role?: string) => {
+    const data = role ? { email, password, role } : { email, password };
+    return api.post("/auth/login", data);
   },
   register: async (userData: any) => {
-    const response = await api.post("/auth/register", userData);
-    return response.data;
+    return api.post("/auth/register", userData);
   },
   verifyToken: async () => {
-    const response = await api.get("/auth/verify");
-    return response.data;
+    return api.get("/auth/verify");
   }
 };
 
@@ -43,72 +50,71 @@ export const authService = {
 export const adminService = {
   getUsers: async (role?: string) => {
     const params = role ? { role } : {};
-    const response = await api.get("/admin/users", { params });
-    return response.data;
+    return api.get("/admin/users", { params });
   },
   getUserById: async (id: number) => {
-    const response = await api.get(`/admin/users/${id}`);
-    return response.data;
+    return api.get(`/admin/users/${id}`);
   },
   updateUser: async (id: number, userData: any) => {
-    const response = await api.put(`/admin/users/${id}`, userData);
-    return response.data;
+    return api.put(`/admin/users/${id}`, userData);
   },
   deleteUser: async (id: number) => {
-    const response = await api.delete(`/admin/users/${id}`);
-    return response.data;
+    return api.delete(`/admin/users/${id}`);
   },
   getEquipment: async () => {
-    const response = await api.get("/admin/equipment");
-    return response.data;
+    return api.get("/admin/equipment");
   },
   addEquipment: async (equipmentData: any) => {
-    const response = await api.post("/admin/equipment", equipmentData);
-    return response.data;
+    return api.post("/admin/equipment", equipmentData);
   }
 };
 
 // Student services
 export const studentService = {
   getProfile: async () => {
-    const response = await api.get("/student/profile");
-    return response.data;
+    return api.get("/student/profile");
   },
   getWorkouts: async () => {
-    const response = await api.get("/student/workouts");
-    return response.data;
+    return api.get("/student/workouts");
   },
   getVideos: async () => {
-    const response = await api.get("/student/videos");
-    return response.data;
+    return api.get("/student/videos");
   }
 };
 
 // Staff services
 export const staffService = {
   getProfile: async () => {
-    const response = await api.get("/staff/profile");
-    return response.data;
+    return api.get("/staff/profile");
   },
   getDepartmentMembers: async () => {
-    const response = await api.get("/staff/department");
-    return response.data;
+    return api.get("/staff/department");
   }
 };
 
 // Trainer services
 export const trainerService = {
   getProfile: async () => {
-    const response = await api.get("/trainer/profile");
-    return response.data;
+    return api.get("/trainer/profile");
   },
   getAssignedMembers: async () => {
-    const response = await api.get("/trainer/members");
-    return response.data;
+    return api.get("/trainer/members");
   },
   addWorkoutPlan: async (planData: any) => {
-    const response = await api.post("/trainer/workout-plans", planData);
-    return response.data;
+    return api.post("/trainer/workout-plans", planData);
+  },
+  getVideos: async () => {
+    return api.get("/trainer/videos");
+  },
+  addVideo: async (videoData: any) => {
+    return api.post("/trainer/videos", videoData);
+  },
+  getMedicalRecords: async (userId?: number) => {
+    const params = userId ? { user_id: userId } : {};
+    return api.get("/trainer/medical-records", { params });
+  },
+  addMedicalRecord: async (recordData: any) => {
+    return api.post("/trainer/medical-records", recordData);
   }
 };
 

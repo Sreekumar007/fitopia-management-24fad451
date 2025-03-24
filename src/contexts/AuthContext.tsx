@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import api, { authService } from "@/services/api";
 
 interface User {
   id: number;
@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  isAuthenticated: boolean; // Add isAuthenticated property
+  isAuthenticated: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
@@ -120,10 +120,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         payment_method: paymentMethod
       };
       
-      const response = await axios.post("http://localhost:5000/api/auth/register", userData);
-      
-      if (response.data.user && response.data.token) {
-        login(response.data.token, response.data.user);
+      try {
+        const response = await authService.register(userData);
+        
+        if (response.user && response.access_token) {
+          login(response.access_token, response.user);
+        }
+      } catch (error) {
+        console.error("API registration error:", error);
+        throw error;
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -146,21 +151,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // In a real app, verify token with the backend
-      const response = await axios.get("http://localhost:5000/api/auth/verify", {
-        headers: {
-          Authorization: `Bearer ${token}`
+      try {
+        const response = await authService.verifyToken();
+        
+        if (response.valid) {
+          // Token is valid, update user if needed
+          if (response.user) {
+            setUser(response.user);
+            localStorage.setItem("user", JSON.stringify(response.user));
+          }
+        } else {
+          // Token is invalid, logout
+          logout();
         }
-      });
-      
-      if (response.data.valid) {
-        // Token is valid, update user if needed
-        if (response.data.user) {
-          setUser(response.data.user);
-          localStorage.setItem("user", JSON.stringify(response.data.user));
+      } catch (error) {
+        console.error("API verification error:", error);
+        // On error, keep the user logged in if using demo tokens
+        if (!token.startsWith('demo-token-')) {
+          logout();
         }
-      } else {
-        // Token is invalid, logout
-        logout();
       }
     } catch (error) {
       console.error("Auth verification error:", error);
@@ -179,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isLoading,
-        isAuthenticated: !!user && !!token, // Add isAuthenticated property
+        isAuthenticated: !!user && !!token, 
         login,
         logout,
         checkAuth,
