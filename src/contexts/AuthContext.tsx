@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import api, { authService, AuthResponse, TokenVerificationResponse } from "@/services/api";
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       try {
-        // API service returns response data directly thanks to the interceptor
+        // API call returns response data directly due to interceptor in api.ts
         const response = await authService.register(userData);
         
         if (response && response.user && response.access_token) {
@@ -153,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // In a real app, verify token with the backend
       try {
-        // API service returns response data directly thanks to the interceptor
+        // API call returns response data directly due to interceptor in api.ts
         const response = await authService.verifyToken();
         
         if (response && response.valid) {
