@@ -59,7 +59,7 @@ const Login = () => {
       // Redirect based on role
       switch (data.user.role) {
         case 'admin':
-          
+
           navigate('/admin/dashboard', { replace: true });
           break;
         case 'student':
@@ -94,6 +94,7 @@ const Login = () => {
             value={formData.email}
             onChange={handleChange}
             required
+            
             className="form-control"
           />
         </div>

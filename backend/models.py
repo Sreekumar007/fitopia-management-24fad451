@@ -36,6 +36,7 @@ class StudentProfile(db.Model):
     medical_conditions = db.Column(db.Text, nullable=True)
     admission_date = db.Column(db.DateTime, default=datetime.utcnow)
     department = db.Column(db.String(100), nullable=True)
+    membership_status = db.Column(db.String(20), default='active')  # 'active', 'expired', 'pending'
     
     # Fix relationship to explicitly define the foreign key
     attendances = db.relationship('Attendance', 

@@ -42,6 +42,7 @@ def student_profile():
                 'fitness_goal': profile.fitness_goal,
                 'medical_conditions': profile.medical_conditions,
                 'admission_date': profile.admission_date.isoformat() if profile.admission_date else None,
+                'membership_status': profile.membership_status,
                 'profile_status': 'created'
             }), 200
         

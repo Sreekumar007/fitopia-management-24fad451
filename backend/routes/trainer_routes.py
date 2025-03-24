@@ -974,3 +974,94 @@ def manage_workout_sessions():
         print(f"Manage workout sessions error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+@trainer_bp.route('/dashboard/stats', methods=['GET'])
+@trainer_required
+def trainer_dashboard_stats():
+    try:
+        current_user = get_jwt_identity()
+        print(f"Trainer dashboard stats requested by user: {current_user['id']}")
+        
+        # Get total students (members)
+        students = User.query.filter_by(role='student').all()
+        total_students = len(students)
+        print(f"Total students found: {total_students}")
+        
+        # Get student profiles to check membership status
+        student_profiles = StudentProfile.query.all()
+        print(f"Total student profiles found: {len(student_profiles)}")
+        
+        # Debug membership status values
+        try:
+            membership_statuses = [getattr(profile, 'membership_status', 'unknown') for profile in student_profiles]
+            print(f"Found membership statuses: {membership_statuses}")
+            
+            # Make sure to handle potential missing attribute
+            active_members = sum(1 for profile in student_profiles if getattr(profile, 'membership_status', None) == 'active')
+            print(f"Active members count: {active_members}")
+        except Exception as mem_error:
+            print(f"Error checking membership status: {str(mem_error)}")
+            # Consider all students active if there's an issue with membership status
+            active_members = total_students
+            print(f"Falling back to default active count: {active_members}")
+        
+        # Get session stats (today, upcoming, completed)
+        today = datetime.now().date()
+        
+        # Get the trainer record for current user
+        trainer = Trainer.query.filter_by(user_id=current_user['id']).first()
+        print(f"Trainer record found: {trainer is not None}")
+        
+        if not trainer:
+            # If trainer record doesn't exist yet, return empty stats
+            print("No trainer record found, returning default stats")
+            return jsonify({
+                'members': {
+                    'total': total_students,
+                    'active': active_members,
+                    'inactive': total_students - active_members
+                },
+                'sessions': {
+                    'today': 0,
+                    'upcoming': 0, 
+                    'completed': 0
+                },
+                'videos': {
+                    'total': 0
+                }
+            }), 200
+        
+        # Get all schedules for this trainer
+        schedules = Schedule.query.filter_by(trainer_id=trainer.id).all()
+        print(f"Schedules found for trainer: {len(schedules)}")
+        
+        today_sessions = sum(1 for schedule in schedules if schedule.scheduled_time.date() == today)
+        upcoming_sessions = sum(1 for schedule in schedules if schedule.scheduled_time.date() > today)
+        completed_sessions = sum(1 for schedule in schedules if schedule.scheduled_time.date() < today)
+        
+        # Get videos count
+        videos = TrainingVideo.query.filter_by(uploaded_by=current_user['id']).all()
+        total_videos = len(videos)
+        print(f"Total videos found: {total_videos}")
+        
+        response_data = {
+            'members': {
+                'total': total_students,
+                'active': active_members,
+                'inactive': total_students - active_members
+            },
+            'sessions': {
+                'today': today_sessions,
+                'upcoming': upcoming_sessions,
+                'completed': completed_sessions
+            },
+            'videos': {
+                'total': total_videos
+            }
+        }
+        print(f"Returning response: {response_data}")
+        return jsonify(response_data), 200
+    except Exception as e:
+        print(f"Trainer dashboard stats error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

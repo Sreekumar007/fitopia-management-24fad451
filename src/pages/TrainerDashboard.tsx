@@ -35,7 +35,8 @@ import {
   getStudents, 
   getTrainerSchedules, 
   getTrainerVideos, 
-  getDietPlans
+  getDietPlans,
+  getTrainerDashboardStats
 } from "@/services/trainerService";
 import VideoUploader from "@/components/trainer/VideoUploader";
 import VideoPlayer from "@/components/trainer/VideoPlayer";
@@ -112,63 +113,81 @@ const TrainerDashboard = () => {
       const dietPlansData = await getDietPlans();
       setDietPlans(dietPlansData);
       
-      // Calculate dashboard metrics from actual data
-      const staffCount = studentsData.filter(s => s.role === 'staff').length;
-      const studentCount = studentsData.filter(s => s.role === 'student').length;
-      const totalMembers = staffCount + studentCount;
-      
-      // Calculate active members based on recent activity
-      // A member is considered active if they have had a session in the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
-      
-      // Get all student IDs who had a session in the last 30 days
-      const activeStudentIds = new Set(
-        schedulesData
-          .filter(s => s.scheduled_time > thirtyDaysAgoStr)
-          .map(s => s.student_id)
-      );
-      
-      // Count active members
-      const activeMembers = activeStudentIds.size;
-      
-      // Calculate session stats from actual data
-      const today = new Date().toISOString().split('T')[0];
-      const todaySessions = schedulesData.filter(s => 
-        s.scheduled_time.startsWith(today)
-      ).length;
-      
-      const upcomingSessions = schedulesData.filter(s => 
-        s.scheduled_time > today
-      ).length;
-      
-      // Assume a session is completed if it's in the past and not today
-      const completedSessions = schedulesData.filter(s => 
-        s.scheduled_time < today
-      ).length;
-      
-      // Update dashboard data
-      setData({
-        members: {
-          total: totalMembers,
-          students: studentCount,
-          staff: staffCount,
-          active: activeMembers
-        },
-        sessions: {
-          today: todaySessions,
-          upcoming: upcomingSessions,
-          completed: completedSessions
-        },
-        videos: {
-          total: videosData.length,
-          popular: Math.min(videosData.length, 3) // Top 3 are considered popular
-        }
-      });
+      try {
+        // Get dashboard stats from backend
+        const dashboardStats = await getTrainerDashboardStats();
+        
+        // Update dashboard data with stats from backend
+        setData({
+          members: {
+            total: dashboardStats.members.total,
+            students: dashboardStats.members.total,
+            staff: 0, // Not currently tracking staff in backend
+            active: dashboardStats.members.active
+          },
+          sessions: {
+            today: dashboardStats.sessions.today,
+            upcoming: dashboardStats.sessions.upcoming,
+            completed: dashboardStats.sessions.completed
+          },
+          videos: {
+            total: dashboardStats.videos.total,
+            popular: Math.min(dashboardStats.videos.total, 3) // Top 3 are considered popular
+          }
+        });
+      } catch (statsError) {
+        console.error("Error fetching dashboard stats, using fallback data:", statsError);
+        
+        // Calculate fallback stats from the loaded data
+        const staffCount = 0;
+        const studentCount = studentsData.length;
+        
+        // Consider all students as active for now
+        const activeMembers = studentCount;
+        
+        // Calculate session stats
+        const today = new Date().toISOString().split('T')[0];
+        const todaySessions = schedulesData.filter(s => 
+          s.scheduled_time?.startsWith(today)
+        ).length;
+        
+        const upcomingSessions = schedulesData.filter(s => 
+          s.scheduled_time > today
+        ).length;
+        
+        const completedSessions = schedulesData.filter(s => 
+          s.scheduled_time < today
+        ).length;
+        
+        // Set fallback data
+        setData({
+          members: {
+            total: studentCount + staffCount,
+            students: studentCount,
+            staff: staffCount,
+            active: activeMembers
+          },
+          sessions: {
+            today: todaySessions,
+            upcoming: upcomingSessions,
+            completed: completedSessions
+          },
+          videos: {
+            total: videosData.length,
+            popular: Math.min(videosData.length, 3)
+          }
+        });
+      }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       toast.error("Failed to load dashboard data");
+      
+      // Set empty data to avoid undefined errors
+      setData({
+        members: { total: 0, students: 0, staff: 0, active: 0 },
+        sessions: { today: 0, upcoming: 0, completed: 0 },
+        videos: { total: 0, popular: 0 }
+      });
     } finally {
       setIsLoading(false);
     }

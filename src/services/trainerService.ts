@@ -309,4 +309,21 @@ export const deleteWorkoutSession = async (sessionId: number): Promise<any> => {
     console.error('Error deleting workout session:', error);
     throw error;
   }
+};
+
+// Dashboard stats
+export const getTrainerDashboardStats = async () => {
+  try {
+    console.log('Fetching trainer dashboard stats...');
+    const response = await apiClient.get('/trainer/dashboard/stats');
+    console.log('Dashboard stats response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trainer dashboard stats:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+    }
+    throw error;
+  }
 }; 
