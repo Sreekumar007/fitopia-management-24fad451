@@ -156,3 +156,9 @@ def init_database():
 if __name__ == '__main__':
     init_database()  # Initialize database before running the app
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+
+
+
+
