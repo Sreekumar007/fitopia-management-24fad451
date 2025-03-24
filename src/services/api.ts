@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 const API_URL = "http://localhost:5000/api";
@@ -39,6 +38,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true
 });
 
 // Add a request interceptor to include auth token
@@ -64,9 +64,43 @@ api.interceptors.response.use(
 
 // Auth services - Note that these return direct data objects, not AxiosResponse objects
 export const authService = {
-  login: async (email: string, password: string, role?: string): Promise<AuthResponse> => {
-    const data = role ? { email, password, role } : { email, password };
-    return api.post("/auth/login", data) as Promise<AuthResponse>;
+  login: async (email: string, password: string, role: string): Promise<AuthResponse> => {
+    try {
+      console.log("Making login request with:", { email, password, role });
+      
+      // Use fetch instead of axios to rule out any axios configuration issues
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login failed");
+      }
+      
+      const data = await response.json();
+      console.log("Raw login response:", data);
+      
+      // Store the token
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log("Token stored in localStorage");
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Login request failed:', error);
+      throw error;
+    }
   },
   register: async (userData: any): Promise<AuthResponse> => {
     return api.post("/auth/register", userData) as Promise<AuthResponse>;

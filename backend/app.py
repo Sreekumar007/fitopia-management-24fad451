@@ -1,5 +1,4 @@
-
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
@@ -11,13 +10,61 @@ from routes.staff_routes import staff_bp
 from routes.admin_routes import admin_bp
 from routes.trainer_routes import trainer_bp
 from models import User
+import traceback
+import logging
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-# Enable CORS for all routes and origins
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
+# Set up logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('logs/app.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# For development only - allow all origins (replace with specific origins in production)
+CORS(app, 
+     resources={r"/api/*": {
+         "origins": "*",  # Allow all origins during development
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization"],
+         "expose_headers": ["Content-Type", "Authorization"]
+     }})
+
+# Request logger
+@app.before_request
+def log_request_info():
+    if request.path.startswith('/api'):
+        print(f"\n>>> Request: {request.method} {request.path}")
+        if request.is_json:
+            try:
+                print(f">>> Body: {request.get_json()}")
+            except:
+                print(">>> Body: [Could not parse JSON]")
+
+# Response logger only - NO CORS header management here
+@app.after_request
+def log_response_info(response):
+    if request.path.startswith('/api'):
+        print(f"<<< Response: {response.status}")
+        try:
+            content = response.get_data().decode()
+            print(f"<<< Body: {content[:200]}{'...' if len(content) > 200 else ''}\n")
+            print(f"<<< Headers: {dict(response.headers)}\n")  # Log headers for debugging
+        except:
+            print("<<< Body: [Could not decode response]\n")
+    return response
+
+# Remove duplicate OPTIONS handlers - flask-cors will handle these automatically
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
@@ -55,101 +102,57 @@ app.register_blueprint(trainer_bp, url_prefix='/api/trainer')
 def index():
     return {'message': 'Gym Management API is running'}
 
-# Allow all OPTIONS requests for CORS preflight
-@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
-@app.route('/<path:path>', methods=['OPTIONS'])
-def options_handler(path):
-    return {'status': 'ok'}, 200
+# Add a special handler for API endpoints with debug info
+@app.route('/api/cors-test', methods=['GET', 'POST', 'OPTIONS'])
+def cors_test():
+    if request.method == 'OPTIONS':
+        print("Received OPTIONS request for CORS preflight")
+        return jsonify({'status': 'preflight ok'}), 200
+        
+    return jsonify({
+        'message': 'CORS test successful',
+        'method': request.method,
+        'headers': dict(request.headers),
+        'timestamp': str(datetime.now())
+    }), 200
 
-# Create default admin user
-def create_default_admin():
-    with app.app_context():
-        admin = User.query.filter_by(email="admin@fitwell.com").first()
-        if not admin:
-            default_admin = User(
-                name="Admin",
-                email="admin@fitwell.com",
-                role="admin"
-            )
-            default_admin.set_password("admin")
-            
-            db.session.add(default_admin)
-            db.session.commit()
-            print("Default admin created successfully")
-        else:
-            print("Default admin already exists")
+# Set up file logging
+if not os.path.exists('logs'):
+    os.makedirs('logs')
 
-# Create test student account for demo purposes
-def create_test_student():
-    with app.app_context():
-        student = User.query.filter_by(email="student@fitwell.com").first()
-        if not student:
-            test_student = User(
-                name="Test Student",
-                email="student@fitwell.com",
-                role="student",
-                gender="Male",
-                blood_group="O+",
-                height=175,
-                weight=70
-            )
-            test_student.set_password("student")
-            
-            db.session.add(test_student)
-            db.session.commit()
-            print("Test student created successfully")
-        else:
-            print("Test student already exists")
+# Set up file handler
+file_handler = RotatingFileHandler(
+    'logs/app.log', 
+    maxBytes=10240, 
+    backupCount=10
+)
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+file_handler.setLevel(logging.INFO)
+app.logger.addHandler(file_handler)
 
-# Create test staff account for demo purposes
-def create_test_staff():
-    with app.app_context():
-        staff = User.query.filter_by(email="staff@fitwell.com").first()
-        if not staff:
-            test_staff = User(
-                name="Test Staff",
-                email="staff@fitwell.com",
-                role="staff",
-                gender="Female",
-                blood_group="A+",
-                height=165,
-                weight=60
-            )
-            test_staff.set_password("staff")
-            
-            db.session.add(test_staff)
-            db.session.commit()
-            print("Test staff created successfully")
-        else:
-            print("Test staff already exists")
+app.logger.setLevel(logging.INFO)
+app.logger.info('FitWell Gym startup')
 
-# Create test trainer account for demo purposes
-def create_test_trainer():
-    with app.app_context():
-        trainer = User.query.filter_by(email="trainer@fitwell.com").first()
-        if not trainer:
-            test_trainer = User(
-                name="Test Trainer",
-                email="trainer@fitwell.com",
-                role="trainer",
-                gender="Male",
-                blood_group="B+",
-                height=180,
-                weight=75
-            )
-            test_trainer.set_password("trainer")
+# Initialize database function
+def init_database():
+    try:
+        with app.app_context():
+            db.create_all()  # Create tables based on models
+            print("Database tables created successfully")
             
-            db.session.add(test_trainer)
-            db.session.commit()
-            print("Test trainer created successfully")
-        else:
-            print("Test trainer already exists")
+            # Create default users
+            create_default_admin()
+            create_test_student()
+            create_test_staff()
+            create_test_trainer()
+            
+            print("Database initialization completed")
+    except Exception as e:
+        print(f"Database initialization error: {str(e)}")
+        traceback.print_exc()
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Create tables based on models
-        create_default_admin()  # Create default admin user
-        create_test_student()  # Create test student user
-        create_test_staff()  # Create test staff user
-        create_test_trainer()  # Create test trainer user
+    init_database()  # Initialize database before running the app
     app.run(debug=True, host='0.0.0.0', port=5000)

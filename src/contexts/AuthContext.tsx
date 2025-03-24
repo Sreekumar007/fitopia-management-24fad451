@@ -1,7 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import api, { authService, AuthResponse, TokenVerificationResponse } from "@/services/api";
+import { toast } from "sonner";
+
+const API_URL = "http://localhost:5000/api";
 
 interface User {
   id: number;
@@ -54,14 +56,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    console.log("AuthProvider initialized with:", {
+      user,
+      hasToken: !!token,
+      storageToken: localStorage.getItem("token"),
+      storageUser: localStorage.getItem("user")
+    });
+  }, [user, token]);
+
   const login = (newToken: string, newUser: User) => {
+    console.log("Setting login data:", { token: newToken, user: newUser }); // Debug log
+    
+    // Make sure user has expected structure
+    if (!newUser || !newUser.role) {
+      console.error("Invalid user data in login:", newUser);
+      toast.error("Invalid user data received"); 
+      return;
+    }
+    
+    // Store in state
     setToken(newToken);
     setUser(newUser);
+    
+    // Store in localStorage
     localStorage.setItem("token", newToken);
     localStorage.setItem("user", JSON.stringify(newUser));
     
     // Set default Authorization header for all future requests
     axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+    
+    console.log("Login completed successfully"); // Debug log
   };
 
   const logout = () => {
@@ -141,47 +166,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const checkAuth = async () => {
-    if (!token) return;
-    
     try {
-      setIsLoading(true);
-      
-      // For demo purposes - if using demo tokens, just validate the existing data
-      if (token.startsWith('demo-token-')) {
-        setIsLoading(false);
-        return;
+      const storedToken = localStorage.getItem('token');
+      if (!storedToken) {
+        throw new Error('No stored token');
       }
-      
-      // In a real app, verify token with the backend
-      try {
-        // API service returns response data directly (due to interceptor in api.ts)
-        const response: TokenVerificationResponse = await authService.verifyToken();
-        
-        if (response && response.valid) {
-          // Token is valid, update user if needed
-          if (response.user) {
-            setUser(response.user);
-            localStorage.setItem("user", JSON.stringify(response.user));
-          }
-        } else {
-          // Token is invalid, logout
-          logout();
-        }
-      } catch (error) {
-        console.error("API verification error:", error);
-        // On error, keep the user logged in if using demo tokens
-        if (!token.startsWith('demo-token-')) {
-          logout();
-        }
+
+      const response = await fetch(`${API_URL}/auth/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${storedToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      console.log('Verify response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Token verification failed');
+      }
+
+      if (data.valid && data.user) {
+        setUser(data.user);
+        setToken(storedToken);
+      } else {
+        throw new Error('Invalid token');
       }
     } catch (error) {
-      console.error("Auth verification error:", error);
-      // On error, keep the user logged in if using demo tokens
-      if (!token.startsWith('demo-token-')) {
-        logout();
-      }
-    } finally {
-      setIsLoading(false);
+      console.error('Auth check failed:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      setToken(null);
+      throw error;
     }
   };
 

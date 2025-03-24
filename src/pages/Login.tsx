@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -26,11 +25,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Helmet } from "react-helmet";
 import { useAuth } from "@/contexts/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { authService } from "@/services/api";
+
+// Add this line to define API_URL
+const API_URL = "http://localhost:5000/api";
 
 // Form schema
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["student", "staff", "admin", "trainer"], {
+    required_error: "Please select a role",
+  }),
 });
 
 const Login = () => {
@@ -43,6 +50,7 @@ const Login = () => {
     defaultValues: {
       email: "",
       password: "",
+      role: "student"
     },
   });
 
@@ -51,58 +59,100 @@ const Login = () => {
     try {
       console.log("Attempting login with:", values);
       
-      // For demo/testing - hardcoded credentials
-      if (values.email === "admin@fitwell.com" && values.password === "admin") {
-        login("demo-token-admin", { id: 1, name: "Admin User", email: values.email, role: "admin" });
-        toast.success("Admin login successful");
-        navigate("/admin/dashboard");
-        return;
-      }
+      // Using the authService instead of direct axios call
+      const response = await authService.login(values.email, values.password, values.role);
       
-      if (values.email === "student@fitwell.com" && values.password === "student") {
-        login("demo-token-student", { id: 2, name: "Test Student", email: values.email, role: "student" });
-        toast.success("Student login successful");
-        navigate("/student/dashboard");
-        return;
-      }
+      console.log("Login response:", response);
+
+      // Store the token and user data
+      login(response.access_token, response.user);
       
-      if (values.email === "staff@fitwell.com" && values.password === "staff") {
-        login("demo-token-staff", { id: 3, name: "Test Staff", email: values.email, role: "staff" });
-        toast.success("Staff login successful");
-        navigate("/staff/dashboard");
-        return;
-      }
-      
-      if (values.email === "trainer@fitwell.com" && values.password === "trainer") {
-        login("demo-token-trainer", { id: 4, name: "Test Trainer", email: values.email, role: "trainer" });
-        toast.success("Trainer login successful");
-        navigate("/trainer/dashboard");
-        return;
-      }
-      
-      // Actual API call
-      const response = await axios.post("http://localhost:5000/api/auth/login", values);
-      
-      // Handle successful login
-      const { token, user } = response.data;
-      login(token, user);
-      
-      toast.success("Login successful");
-      
-      // Redirect based on user role
-      if (user.role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (user.role === "staff") {
-        navigate("/staff/dashboard");
-      } else if (user.role === "trainer") {
-        navigate("/trainer/dashboard");
-      } else {
-        navigate("/student/dashboard");
+      toast.success(`${response.user.role.charAt(0).toUpperCase() + response.user.role.slice(1)} login successful`);
+
+      // Navigate based on role
+      switch(response.user.role) {
+        case 'admin':
+          navigate("/admin/dashboard", { replace: true });
+          break;
+        case 'student':
+          navigate("/student/dashboard", { replace: true });
+          break;
+        case 'staff':
+          navigate("/staff/dashboard", { replace: true });
+          break;
+        case 'trainer':
+          navigate("/trainer/dashboard", { replace: true });
+          break;
+        default:
+          navigate("/dashboard", { replace: true });
       }
       
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Login failed. Please check your credentials.");
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || "Login failed";
+        console.log("Server error:", error.response?.data);
+        toast.error(errorMessage);
+      } else {
+        toast.error("Failed to connect to the server. Please check your network connection.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const directLogin = async () => {
+    try {
+      setIsLoading(true);
+      // Use hardcoded credentials for now
+      const credentials = {
+        email: "admin@fitwell.com",
+        password: "admin",
+        role: "admin"
+      };
+      
+      console.log("Sending login request to:", `${API_URL}/auth/login`);
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials)
+      });
+      
+      console.log("Response status:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login failed");
+      }
+      
+      const data = await response.json();
+      console.log("Login response data:", data);
+      
+      // Explicitly check for required fields
+      if (!data.access_token || !data.user || !data.user.id || !data.user.role) {
+        console.error("Invalid response format:", data);
+        toast.error("Invalid response from server");
+        return;
+      }
+      
+      // Store data first in localStorage
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
+      // Then call the context login function
+      login(data.access_token, data.user);
+      
+      toast.success("Login successful!");
+      
+      // Add a small delay before navigation to ensure state updates
+      setTimeout(() => {
+        navigate(`/${data.user.role}/dashboard`);
+      }, 100);
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login failed: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +201,30 @@ const Login = () => {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="trainer">Trainer</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+
+              
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -188,6 +262,13 @@ const Login = () => {
               </div>
             </div>
           </div>
+          <Button 
+            type="button" 
+            onClick={directLogin}
+            className="w-full mt-4 bg-green-500 hover:bg-green-600"
+          >
+            Direct Login (Admin)
+          </Button>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-muted-foreground text-center">

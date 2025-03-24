@@ -1,13 +1,15 @@
-
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from database import db
 from models import User
 from werkzeug.security import check_password_hash
-from datetime import timedelta
+from datetime import timedelta, datetime
 import traceback
+import logging
 
 auth_bp = Blueprint('auth', __name__)
+
+logger = logging.getLogger(__name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -71,71 +73,75 @@ def register():
 def login():
     try:
         data = request.get_json()
+        print(f"Received login data: {data}")  # Debug log
         
+        if not data:
+            print("No JSON data received")
+            return jsonify({'error': 'No data provided'}), 400
+
         # Validate required fields
-        if not all(k in data for k in ['email', 'password']):
+        if 'email' not in data or 'password' not in data:
+            print("Missing email or password")
             return jsonify({'error': 'Email and password are required'}), 400
-            
+
         # Find user by email
         user = User.query.filter_by(email=data['email']).first()
         if not user:
+            print(f"User not found: {data['email']}")
             return jsonify({'error': 'Invalid email or password'}), 401
             
-        # Verify password - For demo credentials, use hardcoded check
+        # Verify password for demo accounts
         if (user.email == "admin@fitwell.com" and data['password'] == "admin") or \
            (user.email == "student@fitwell.com" and data['password'] == "student") or \
            (user.email == "staff@fitwell.com" and data['password'] == "staff") or \
            (user.email == "trainer@fitwell.com" and data['password'] == "trainer"):
-            # It's a demo account with special password handling
             password_valid = True
+            print(f"Demo account login: {user.email}")
         else:
-            # Regular password check
             password_valid = user.check_password(data['password'])
             
         if not password_valid:
-            return jsonify({'error': 'Invalid password'}), 401
-            
-        # Validate role if provided
-        if 'role' in data and data['role'] and data['role'] != user.role:
-            return jsonify({'error': f'Access denied. {data["role"].capitalize()} access required.'}), 403
-            
+            print(f"Invalid password for user: {user.email}")
+            return jsonify({'error': 'Invalid email or password'}), 401
+
         # Create access token
         access_token = create_access_token(
             identity={'id': user.id, 'role': user.role},
             expires_delta=timedelta(days=1)
         )
         
-        # Return user data and token
+        print(f"Login successful for {user.email} with role {user.role}")
+        
+        # Ensure the complete response is returned correctly
         return jsonify({
             'access_token': access_token,
             'user': {
                 'id': user.id,
                 'name': user.name,
                 'email': user.email,
-                'role': user.role,
-                'gender': user.gender,
-                'blood_group': user.blood_group,
-                'height': user.height,
-                'weight': user.weight
+                'role': user.role
             }
         }), 200
+        
     except Exception as e:
         print(f"Login error: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Authentication failed'}), 500
 
 @auth_bp.route('/verify', methods=['GET'])
 @jwt_required()
 def verify_token():
     try:
         current_user = get_jwt_identity()
+        logger.info(f"Token verification request for user: {current_user}")
         
         # Get full user information
         user = User.query.get(current_user['id'])
         if not user:
-            return jsonify({'valid': False}), 401
+            logger.warning(f"Token verification failed: User not found for id {current_user['id']}")
+            return jsonify({'valid': False, 'error': 'User not found'}), 401
             
-        # Return user info
+        logger.info(f"Token verification successful for user {user.email}")
         return jsonify({
             'valid': True,
             'user': {
@@ -150,8 +156,8 @@ def verify_token():
             }
         }), 200
     except Exception as e:
-        print(f"Token verification error: {str(e)}")
-        traceback.print_exc()
+        logger.error(f"Token verification error: {str(e)}")
+        logger.error(traceback.format_exc())
         return jsonify({'valid': False, 'error': str(e)}), 401
 
 @auth_bp.route('/profile', methods=['GET'])
@@ -180,3 +186,19 @@ def get_profile():
         print(f"Get profile error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/test', methods=['GET'])
+def test_route():
+    try:
+        return jsonify({
+            'status': 'success',
+            'message': 'Backend is running!',
+            'timestamp': str(datetime.now())
+        }), 200
+    except Exception as e:
+        print(f"Test route error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@auth_bp.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({'message': 'pong'}), 200
